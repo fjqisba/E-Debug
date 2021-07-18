@@ -1,0 +1,7 @@
+build*/
+.idea/
+.vs/
+cmake-build-*/
+/CMakeSettings.json
+Debug/
+Release/
