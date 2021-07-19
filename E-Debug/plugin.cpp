@@ -1,6 +1,10 @@
 #include "plugin.h"
 #include "MainWindow.h"
 #include <QApplication>
+#include <QClipboard>
+#include "public.h"
+#include "pluginsdk/bridgemain.h"
+#include "pluginsdk/_scriptapi_gui.h"
 
 unsigned char icon[2348] = {
 	0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00, 0x00, 0x0D, 0x49, 0x48, 0x44, 0x52,
@@ -152,6 +156,12 @@ unsigned char icon[2348] = {
 	0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4E, 0x44, 0xAE, 0x42, 0x60, 0x82
 };
 
+#define PLUGIN_MENU_STARTDEBUG 0
+#define PLUGIN_MENU_ABOUTME 1
+#define PLUGIN_DISASM_HEXDATA 2
+#define PLUGIN_DISASM_BINDATA 3
+#define PLUGIN_DUMP_HEXDATA 4
+#define PLUGIN_DUMP_BINDATA 5
 //Initialize your plugin data here.
 bool pluginInit(PLUG_INITSTRUCT* initStruct)
 {
@@ -173,11 +183,85 @@ void pluginSetup()
 
 	
 	_plugin_menuseticon(hMenu, &menu_icon);
-	_plugin_menuaddentry(hMenu, 0, "&Start Analysis");
-	_plugin_menuaddentry(hMenu, 1, "&About");
+	_plugin_menuaddentry(hMenu, PLUGIN_MENU_STARTDEBUG, LocalCpToUtf8("开始分析").c_str());
+	_plugin_menuaddentry(hMenu, PLUGIN_MENU_ABOUTME, LocalCpToUtf8("关于软件").c_str());
+
+	_plugin_menuseticon(hMenuDisasm,&menu_icon);
+	_plugin_menuaddentry(hMenuDisasm, PLUGIN_DISASM_HEXDATA, LocalCpToUtf8("取十六进制").c_str());
+	_plugin_menuaddentry(hMenuDisasm, PLUGIN_DISASM_BINDATA, LocalCpToUtf8("到字节集").c_str());
+
+	_plugin_menuseticon(hMenuDump, &menu_icon);
+	_plugin_menuaddentry(hMenuDump, PLUGIN_DUMP_HEXDATA, LocalCpToUtf8("取十六进制").c_str());
+	_plugin_menuaddentry(hMenuDump, PLUGIN_DUMP_BINDATA, LocalCpToUtf8("到字节集").c_str());
 }
 
+//到十六进制
+void CopyHexData(Script::Gui::Window window)
+{
+	duint start = 0;
+	duint end = 0;
+	if (!Script::Gui::SelectionGet(window, &start, &end)) {
+		return;
+	}
+	
+	unsigned int dataSize = end - start + 1;
 
+	std::vector<unsigned char> hexData;
+	hexData.resize(dataSize, 0x0);
+	if (!Script::Memory::Read(start, &hexData[0], dataSize, 0)) {
+		return;
+	}
+
+	std::string strHex;
+	strHex.resize(dataSize << 1);
+	unsigned int index = 0;
+	for (unsigned int n = 0; n < hexData.size(); ++n) {
+		const char* pHex = UCharToStr(hexData[n]);
+		strHex[index++] = pHex[0];
+		strHex[index++] = pHex[1];
+	}
+
+	QClipboard* pClipboradr = QApplication::clipboard();
+	if (pClipboradr) {
+		pClipboradr->setText(QString::fromStdString(strHex.c_str()));
+	}
+}
+
+//到字节集
+void CopyBinData(Script::Gui::Window window)
+{
+	duint start = 0;
+	duint end = 0;
+	if (!Script::Gui::SelectionGet(window, &start, &end)) {
+		return;
+	}
+
+	unsigned int dataSize = end - start + 1;
+	if (!dataSize) {
+		return;
+	}
+
+	std::vector<unsigned char> hexData;
+	hexData.resize(dataSize, 0x0);
+	if (!Script::Memory::Read(start, &hexData[0], dataSize, 0)) {
+		return;
+	}
+
+	QString strBin;
+	strBin.reserve(hexData.size() * 4 + 1);
+	strBin.append("{");
+	for (unsigned int n = 0; n < hexData.size(); ++n) {
+		strBin.append(QString::number(hexData[n]));
+		strBin.append(",");
+	}
+	strBin.chop(1);
+	strBin.append("}");
+
+	QClipboard* pClipboradr = QApplication::clipboard();
+	if (pClipboradr) {
+		pClipboradr->setText(strBin);
+	}
+}
 
 void EDebugEntry()
 {
@@ -214,11 +298,11 @@ PLUG_EXPORT void CBMENUENTRY(CBTYPE cbType, PLUG_CB_MENUENTRY* info)
 	switch (info->hEntry)
 	{
 		//Open Window
-	case 0:
+	case PLUGIN_MENU_STARTDEBUG:
 		EDebugEntry();
 		break;
 		//About
-	case 1:
+	case PLUGIN_MENU_ABOUTME:
 		ZeroMemory(&mbp, sizeof(MSGBOXPARAMS));
 		mbp.cbSize = sizeof(MSGBOXPARAMS);
 		mbp.hInstance = (HMODULE)pluginHandle;
@@ -228,6 +312,18 @@ PLUG_EXPORT void CBMENUENTRY(CBTYPE cbType, PLUG_CB_MENUENTRY* info)
 			"Coded By : fjqisba - 2021.07.13";
 		mbp.dwStyle = MB_ICONINFORMATION | MB_OK;
 		MessageBoxIndirectW(&mbp);
+		break;
+	case PLUGIN_DISASM_HEXDATA:
+		CopyHexData(Script::Gui::DisassemblyWindow);
+		break;
+	case PLUGIN_DISASM_BINDATA:
+		CopyBinData(Script::Gui::DisassemblyWindow);
+		break;
+	case PLUGIN_DUMP_HEXDATA:
+		CopyHexData(Script::Gui::DumpWindow);
+		break;
+	case PLUGIN_DUMP_BINDATA:
+		CopyBinData(Script::Gui::DumpWindow);
 		break;
 	default:
 		break;

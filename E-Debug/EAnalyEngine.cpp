@@ -1,5 +1,5 @@
 #include "EAnalyEngine.h"
-
+#include <QPlainTextEdit>
 #include "pluginsdk/_scriptapi_memory.h"
 #include "pluginsdk/_scriptapi_pattern.h"
 #include "SymbolTable.h"
@@ -32,19 +32,21 @@ EAnalyEngine::~EAnalyEngine()
 
 }
 
-bool EAnalyEngine::InitEAnalyEngine(unsigned int anyAddr)
+bool EAnalyEngine::InitEAnalyEngine(unsigned int anyAddr, QPlainTextEdit* outMsg)
 {
+	m_outMsg = outMsg;
 	bool bRet = false;
-	if (!InitSectionManager(anyAddr)) {
+	if (!InitSectionManager(anyAddr,outMsg)) {
 		return false;
 	}
-
+	
 	duint codeBase = Script::Memory::GetBase(anyAddr);
 	duint codeSize = Script::Memory::GetSize(anyAddr);
 
 	duint eMagicHead = Script::Pattern::FindMem(codeBase, codeSize, "50 64 89 25 00 00 00 00 81 EC AC 01 00 00 53 56 57");
 	if (eMagicHead != 0) {
 		m_AnalysisMode = 1;
+		outMsg->appendPlainText(QStringLiteral("->ºÏ≤‚µΩ“◊”Ô—‘æ≤Ã¨±‡“Î≥Ã–Ú"));
 		duint dwHeadAddr = Script::Memory::ReadDword(eMagicHead + 0x26);
 		m_bAnalySuccess = Parse_EStatic(dwHeadAddr);
 		bRet = true;

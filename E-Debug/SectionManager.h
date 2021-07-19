@@ -2,6 +2,7 @@
 #include <vector>
 #include <string>
 
+
 struct SegmentInfomation
 {
 	unsigned int m_segStart;                   //区段起始地址
@@ -10,10 +11,11 @@ struct SegmentInfomation
 	std::vector<unsigned char> m_segData;  //区段数据
 };
 
+class QPlainTextEdit;
 class SectionManager
 {
 public:
-	bool InitSectionManager(unsigned int anyAddr);
+	bool InitSectionManager(unsigned int anyAddr, QPlainTextEdit* outMsg);
 
 	//线性地址转换为虚拟地址
 	unsigned char* LinearAddrToVirtualAddr(unsigned int LinerAddr);
@@ -21,4 +23,6 @@ public:
 	unsigned int VirtualAddrToLinearAddr(unsigned char* pVirtualAddr);
 private:
 	std::vector<SegmentInfomation> mVec_segInfo;
+
+	QPlainTextEdit* m_outMsg = nullptr;
 };

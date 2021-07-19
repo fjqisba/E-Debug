@@ -14,6 +14,7 @@ public:
 	bool InitWindow_EStatic();
 private slots:
 	void on_LibNameSelected(const QString& currentText);
+	void on_FuncDoubleClicked(QTableWidgetItem* pItem);
 private:
 	Ui::MainWindow ui;
 	EAnalyEngine eAnalyEngine;

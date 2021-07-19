@@ -83,13 +83,14 @@ struct LibFuncMap
 	std::vector<FuncInfo> vec_Funcs;
 };
 
+class QPlainTextEdit;
 class EAnalyEngine:public SectionManager
 {
 public:
 	EAnalyEngine();
 	~EAnalyEngine();
 public:
-	bool InitEAnalyEngine(unsigned int anyAddr);
+	bool InitEAnalyEngine(unsigned int anyAddr, QPlainTextEdit* outMsg);
 private:
 	bool Parse_EStatic(duint eHeadAddr);
 
@@ -104,4 +105,6 @@ public:
 public:
 	//库函数表
 	std::vector<LibFuncMap> mVec_LibFunc;
+	//日志打印输出
+	QPlainTextEdit* m_outMsg = nullptr;
 };

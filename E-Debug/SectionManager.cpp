@@ -1,8 +1,10 @@
 #include "SectionManager.h"
 #include "pluginsdk/bridgemain.h"
+#include <QPlainTextEdit>
 #include "pluginsdk/_scriptapi_memory.h"
 #include "pluginsdk/_scriptapi_gui.h"
 #include "pluginsdk/_scriptapi_module.h"
+#include "public.h"
 
 unsigned int AlignByMemory(unsigned int originValue)
 {
@@ -16,10 +18,12 @@ unsigned int AlignByMemory(unsigned int originValue)
 	return reminder * Alignment;
 }
 
-bool SectionManager::InitSectionManager(unsigned int anyAddr)
+bool SectionManager::InitSectionManager(unsigned int anyAddr, QPlainTextEdit* outMsg)
 {
+	m_outMsg = outMsg;
 	BridgeList<Script::Module::ModuleSectionInfo> moduleList;
 	if (!Script::Module::SectionListFromAddr(anyAddr, &moduleList)) {
+		outMsg->appendPlainText(QStringLiteral("[InitSectionManager]获取程序区段失败"));
 		return false;;
 	}
 
@@ -29,6 +33,10 @@ bool SectionManager::InitSectionManager(unsigned int anyAddr)
 		tmpInfo.m_segStart = moduleList[n].addr;
 		tmpInfo.m_segSize = AlignByMemory(moduleList[n].size);
 		tmpInfo.m_segName = moduleList[n].name;
+
+		QString logMsg;
+		logMsg.sprintf("->[InitSection]%s:%08X,%s:%08X", LocalCpToUtf8("地址").c_str(), tmpInfo.m_segStart, LocalCpToUtf8("大小").c_str(), tmpInfo.m_segSize);
+		outMsg->appendPlainText(logMsg);
 
 		tmpInfo.m_segData.resize(tmpInfo.m_segSize);
 		Script::Memory::Read(tmpInfo.m_segStart, &tmpInfo.m_segData[0], tmpInfo.m_segSize, 0);

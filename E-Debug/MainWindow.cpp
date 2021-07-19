@@ -3,6 +3,7 @@
 #include <QTextCodec>
 #include <QString>
 #include "pluginsdk/_scriptapi_label.h"
+#include "pluginsdk/_scriptapi_gui.h"
 #include "TrieTree.h"
 #include "public.h"
 
@@ -10,6 +11,8 @@ MainWindow::MainWindow(unsigned int dwBase, QWidget* parent) : QWidget(parent)
 {
 	ui.setupUi(this);
 
+	//设置版本号
+	this->setWindowTitle(QStringLiteral("E-Debug 4.0"));
 	//禁止最大化按钮
 	//this->setWindowFlags(windowFlags() & ~Qt::WindowMaximizeButtonHint);
 	//设置窗体图标
@@ -18,6 +21,7 @@ MainWindow::MainWindow(unsigned int dwBase, QWidget* parent) : QWidget(parent)
 	this->setAttribute(Qt::WA_DeleteOnClose);
 	ui.table_Func->setColumnCount(2);
 	ui.table_Func->setColumnWidth(0, 100);   //设置第一列宽度
+	
 	ui.table_Func->horizontalHeader()->setStretchLastSection(true);
 	
 	ui.table_Func->setHorizontalHeaderLabels(QStringList() << QStringLiteral("地址") << QStringLiteral("命令名称"));
@@ -26,14 +30,12 @@ MainWindow::MainWindow(unsigned int dwBase, QWidget* parent) : QWidget(parent)
 	ui.table_Func->setItem(0, 1, new QTableWidgetItem("func"));
 
 	connect(ui.list_LibInfo, SIGNAL(currentTextChanged(const QString&)), SLOT(on_LibNameSelected(const QString&)));
+	connect(ui.table_Func,SIGNAL(itemDoubleClicked(QTableWidgetItem*)),SLOT(on_FuncDoubleClicked(QTableWidgetItem*)));
 
-	if (!eAnalyEngine.InitEAnalyEngine(dwBase)) {
-		QMessageBox::critical(0, QStringLiteral("抱歉"), QStringLiteral("检测易语言程序失败"));
-		this->close();
+	if (!eAnalyEngine.InitEAnalyEngine(dwBase, ui.outMsg)) {
+		QMessageBox::critical(0, QStringLiteral("抱歉"), QStringLiteral("初始化失败"));
 		return;
 	}
-
-	
 
 	//静态编译程序
 	if (eAnalyEngine.m_AnalysisMode == 1) {
@@ -45,6 +47,18 @@ MainWindow::MainWindow(unsigned int dwBase, QWidget* parent) : QWidget(parent)
 MainWindow::~MainWindow()
 {
 	
+}
+
+void MainWindow::on_FuncDoubleClicked(QTableWidgetItem* pItem)
+{
+	if (!pItem) {
+		return;
+	}
+
+	QString funcAddr = ui.table_Func->item(pItem->row(), 0)->text();
+	duint addr = funcAddr.toUInt(nullptr, 16);
+	
+	GuiDisasmAt(addr,0);	
 }
 
 void MainWindow::on_LibNameSelected(const QString& currentText)
@@ -77,18 +91,18 @@ void MainWindow::on_LibNameSelected(const QString& currentText)
 			QTableWidgetItem* pNameItem = new QTableWidgetItem(strName);
 			pNameItem->setTextAlignment(Qt::AlignHCenter | Qt::AlignVCenter);
 			ui.table_Func->setItem(insertRow, 1, pNameItem);
+
+			//设置每行高度
+			ui.table_Func->setRowHeight(insertRow, 20);
 		}
 		//开启排序功能
-		ui.table_Func->setSortingEnabled(true);
-
-		
+		ui.table_Func->setSortingEnabled(true);	
 	}
-	
 }
 
 bool MainWindow::InitWindow_EStatic()
 {
-	ui.outMsg->appendPlainText(QStringLiteral("->识别易语言支持库函数..."));
+	//ui.outMsg->appendPlainText(QStringLiteral("->开始识别易语言支持库函数..."));
 
 	QTextCodec* codec = QTextCodec::codecForName("GB2312");
 	for (unsigned int nLibIndex = 0; nLibIndex < eAnalyEngine.mVec_LibFunc.size(); ++nLibIndex) {
@@ -98,18 +112,23 @@ bool MainWindow::InitWindow_EStatic()
 
 		//函数识别
 		TrieTree esigTree(&eAnalyEngine);
-		if (!esigTree.LoadSig(libPath.c_str())) {
-			continue;
-		}
-		for (unsigned int nFuncIndex = 0; nFuncIndex < eLibMap.vec_Funcs.size(); ++nFuncIndex) {
-			char* pFuncName = esigTree.MatchFunc(eAnalyEngine.LinearAddrToVirtualAddr(eLibMap.vec_Funcs[nFuncIndex].addr));
-			if (pFuncName) {
-				eLibMap.vec_Funcs[nFuncIndex].name = pFuncName;
-				std::string u16FuncName = LocalCpToUtf8(pFuncName);
-				Script::Label::Set(eLibMap.vec_Funcs[nFuncIndex].addr, u16FuncName.c_str());
+		if (esigTree.LoadSig(libPath.c_str())) {
+			for (unsigned int nFuncIndex = 0; nFuncIndex < eLibMap.vec_Funcs.size(); ++nFuncIndex) {
+				char* pFuncName = esigTree.MatchFunc(eAnalyEngine.LinearAddrToVirtualAddr(eLibMap.vec_Funcs[nFuncIndex].addr));
+				if (pFuncName) {
+					eLibMap.vec_Funcs[nFuncIndex].name = pFuncName;
+					std::string u16FuncName = LocalCpToUtf8(pFuncName);
+					Script::Label::Set(eLibMap.vec_Funcs[nFuncIndex].addr, u16FuncName.c_str());
+				}
+				else {
+					//To do...模糊匹配
+				}
 			}
 		}
-
+		else {
+			QString logMsg = QStringLiteral("->加载特征文件失败:") + codec->toUnicode(libPath.c_str());
+			ui.outMsg->appendPlainText(logMsg);
+		}
 		//更新界面
 		QString LibNameLine = codec->toUnicode(eLibMap.libName.c_str());
 		LibNameLine.append(QStringLiteral("(命令总数:"));
@@ -123,5 +142,8 @@ bool MainWindow::InitWindow_EStatic()
 		ui.list_LibInfo->insertItem(ui.list_LibInfo->count(), pGuidItem);
 		ui.list_LibInfo->insertItem(ui.list_LibInfo->count(), new QListWidgetItem(QStringLiteral("——————————————————————————————")));
 	}
+
+	//开始分析DLL命令表
+
 	return true;
 }
