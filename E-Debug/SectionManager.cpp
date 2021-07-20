@@ -4,6 +4,7 @@
 #include "pluginsdk/_scriptapi_memory.h"
 #include "pluginsdk/_scriptapi_gui.h"
 #include "pluginsdk/_scriptapi_module.h"
+#include "pluginsdk/_scriptapi_pattern.h"
 #include "public.h"
 
 unsigned int AlignByMemory(unsigned int originValue)
@@ -35,7 +36,7 @@ bool SectionManager::InitSectionManager(unsigned int anyAddr, QPlainTextEdit* ou
 		tmpInfo.m_segName = moduleList[n].name;
 
 		QString logMsg;
-		logMsg.sprintf("->[InitSection]%s:%08X,%s:%08X", LocalCpToUtf8("地址").c_str(), tmpInfo.m_segStart, LocalCpToUtf8("大小").c_str(), tmpInfo.m_segSize);
+		logMsg.sprintf("->[%s]  %s:%08X,%s:%08X", LocalCpToUtf8("添加分析区段").c_str(), LocalCpToUtf8("地址").c_str(), tmpInfo.m_segStart, LocalCpToUtf8("大小").c_str(), tmpInfo.m_segSize);
 		outMsg->appendPlainText(logMsg);
 
 		tmpInfo.m_segData.resize(tmpInfo.m_segSize);
@@ -79,4 +80,23 @@ unsigned int SectionManager::VirtualAddrToLinearAddr(unsigned char* pVirtualAddr
 		}
 	}
 	return -1;
+}
+
+unsigned int SectionManager::SeachUserCodeEndAddr()
+{
+	if (!mVec_segInfo.size()) {
+		return -1;
+	}
+	unsigned int memSize = 0;
+	for (unsigned int n = 0; n < mVec_segInfo.size(); ++n) {
+		memSize += mVec_segInfo[n].m_segSize;
+	}
+
+	const char pattern[] = "60E8????????8945FC618B45FC5F5E5B8BE55DC3";
+	return Script::Pattern::FindMem(mVec_segInfo[0].m_segStart, memSize, pattern);
+}
+
+unsigned int SectionManager::ReadCallAddr(unsigned int addr)
+{
+	return addr + ReadUInt(LinearAddrToVirtualAddr(addr + 1)) + 5;
 }

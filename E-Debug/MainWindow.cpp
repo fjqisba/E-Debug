@@ -4,13 +4,16 @@
 #include <QString>
 #include "pluginsdk/_scriptapi_label.h"
 #include "pluginsdk/_scriptapi_gui.h"
+#include "pluginsdk/_scriptapi_pattern.h"
+#include "pluginsdk/_scriptapi_comment.h"
 #include "TrieTree.h"
 #include "public.h"
 
 MainWindow::MainWindow(unsigned int dwBase, QWidget* parent) : QWidget(parent)
 {
 	ui.setupUi(this);
-
+	ui.tabWidget->clear();
+	
 	//设置版本号
 	this->setWindowTitle(QStringLiteral("E-Debug 4.0"));
 	//禁止最大化按钮
@@ -36,7 +39,8 @@ MainWindow::MainWindow(unsigned int dwBase, QWidget* parent) : QWidget(parent)
 		QMessageBox::critical(0, QStringLiteral("抱歉"), QStringLiteral("初始化失败"));
 		return;
 	}
-
+	
+	
 	//静态编译程序
 	if (eAnalyEngine.m_AnalysisMode == 1) {
 		InitWindow_EStatic();
@@ -80,6 +84,8 @@ void MainWindow::on_LibNameSelected(const QString& currentText)
 		for (unsigned int nFuncIndex = 0; nFuncIndex < eLibMap.vec_Funcs.size(); ++nFuncIndex) {
 			int insertRow = ui.table_Func->rowCount();
 			ui.table_Func->insertRow(insertRow);
+			//设置每行高度
+			ui.table_Func->setRowHeight(insertRow, 20);
 
 			QString strAddr;
 			strAddr.sprintf("%08X", eLibMap.vec_Funcs[nFuncIndex].addr);
@@ -91,9 +97,6 @@ void MainWindow::on_LibNameSelected(const QString& currentText)
 			QTableWidgetItem* pNameItem = new QTableWidgetItem(strName);
 			pNameItem->setTextAlignment(Qt::AlignHCenter | Qt::AlignVCenter);
 			ui.table_Func->setItem(insertRow, 1, pNameItem);
-
-			//设置每行高度
-			ui.table_Func->setRowHeight(insertRow, 20);
 		}
 		//开启排序功能
 		ui.table_Func->setSortingEnabled(true);	
@@ -104,6 +107,7 @@ bool MainWindow::InitWindow_EStatic()
 {
 	//ui.outMsg->appendPlainText(QStringLiteral("->开始识别易语言支持库函数..."));
 
+	ui.tabWidget->addTab(ui.tab_Func, QStringLiteral("函数识别"));
 	QTextCodec* codec = QTextCodec::codecForName("GB2312");
 	for (unsigned int nLibIndex = 0; nLibIndex < eAnalyEngine.mVec_LibFunc.size(); ++nLibIndex) {
 
@@ -143,7 +147,59 @@ bool MainWindow::InitWindow_EStatic()
 		ui.list_LibInfo->insertItem(ui.list_LibInfo->count(), new QListWidgetItem(QStringLiteral("——————————————————————————————")));
 	}
 
-	//开始分析DLL命令表
+	//开始生成DLL命令表
+	if (eAnalyEngine.mVec_ImportsApi.size()) {
 
+		//设置列数
+		ui.table_Api->setColumnCount(4);
+		ui.table_Api->setColumnWidth(0, 60);   //设置第一列宽度
+		ui.table_Api->setColumnWidth(1, 120);   //设置第一列宽度
+		ui.table_Api->setColumnWidth(2, 340);   //设置第一列宽度
+		ui.table_Api->setHorizontalHeaderLabels(QStringList() << QStringLiteral("序号") << QStringLiteral("DLL库") << QStringLiteral("命令名称") << QStringLiteral("引用次数"));
+
+		ui.tabWidget->addTab(ui.tab_Api, QStringLiteral("Api命令"));
+		for (unsigned int n = 0; n < eAnalyEngine.mVec_ImportsApi.size(); ++n) {
+			int insertRow = ui.table_Api->rowCount();
+			ui.table_Api->insertRow(insertRow);
+			//设置每行高度
+			ui.table_Api->setRowHeight(insertRow, 20);
+
+			QTableWidgetItem* pItemIndex = new QTableWidgetItem(QString::number(n));
+			pItemIndex->setTextAlignment(Qt::AlignHCenter | Qt::AlignVCenter);
+			ui.table_Api->setItem(insertRow, 0, pItemIndex);
+
+			QTableWidgetItem* pItemLib = nullptr;
+			if (eAnalyEngine.mVec_ImportsApi[n].LibName.empty()) {
+				pItemLib = new QTableWidgetItem(QStringLiteral("NULL"));
+			}
+			else {
+				pItemLib = new QTableWidgetItem(codec->toUnicode(eAnalyEngine.mVec_ImportsApi[n].LibName.c_str()));
+			}
+			pItemLib->setTextAlignment(Qt::AlignHCenter | Qt::AlignVCenter);
+			ui.table_Api->setItem(insertRow, 1, pItemLib);
+
+			QTableWidgetItem* pItemFunc = new QTableWidgetItem(codec->toUnicode(eAnalyEngine.mVec_ImportsApi[n].ApiName.c_str()));
+			pItemFunc->setTextAlignment(Qt::AlignHCenter | Qt::AlignVCenter);
+			ui.table_Api->setItem(insertRow, 2, pItemFunc);
+		}
+
+		duint scanStartAddr = eAnalyEngine.m_UserCodeStartAddr;
+		do 
+		{
+			scanStartAddr = Script::Pattern::FindMem(scanStartAddr + 1, eAnalyEngine.m_UserCodeEndAddr - scanStartAddr, "B8????0000E8");
+			if (!scanStartAddr) {
+				break;
+			}
+			unsigned int callAddr = eAnalyEngine.ReadCallAddr(scanStartAddr + 5);
+			callAddr = ReadUInt(eAnalyEngine.LinearAddrToVirtualAddr(callAddr + 2));
+			callAddr = ReadUInt(eAnalyEngine.LinearAddrToVirtualAddr(callAddr));
+			if (callAddr == eAnalyEngine.m_KrnlApp.krnl_MCallDllCmd) {
+				int index = ReadUInt(eAnalyEngine.LinearAddrToVirtualAddr(scanStartAddr + 1));
+				Script::Comment::Set(scanStartAddr, LocalCpToUtf8(eAnalyEngine.mVec_ImportsApi[index].ApiName.c_str()).c_str());
+			}
+		} while (true);
+	}
+
+	
 	return true;
 }

@@ -95,6 +95,11 @@ unsigned int ReadUInt(unsigned char* pBuf)
 	return *(unsigned int*)pBuf;
 }
 
+unsigned short ReadUShort(unsigned char* pBuf)
+{
+	return *(unsigned short*)pBuf;
+}
+
 unsigned char ReadUChar(unsigned char* pBuf)
 {
 	return *(unsigned char*)pBuf;

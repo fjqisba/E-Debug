@@ -2,6 +2,8 @@
 #include <QPlainTextEdit>
 #include "pluginsdk/_scriptapi_memory.h"
 #include "pluginsdk/_scriptapi_pattern.h"
+#include "pluginsdk/_scriptapi_comment.h"
+#include "pluginsdk/_scriptapi_label.h"
 #include "SymbolTable.h"
 #include "public.h"
 
@@ -59,6 +61,26 @@ bool EAnalyEngine::InitEAnalyEngine(unsigned int anyAddr, QPlainTextEdit* outMsg
 	return bRet;
 }
 
+void EAnalyEngine::ParseKrnlInterface(duint lpKrnlEntry)
+{
+	lpKrnlEntry -= sizeof(mid_KrnlApp);
+	Script::Memory::Read(lpKrnlEntry, &m_KrnlApp, sizeof(mid_KrnlApp), 0);
+
+	Script::Label::Set(m_KrnlApp.krnl_MReportError, LocalCpToUtf8("错误回调").c_str());
+	Script::Label::Set(m_KrnlApp.krnl_MCallDllCmd, LocalCpToUtf8("DLL命令").c_str());
+	Script::Label::Set(m_KrnlApp.krnl_MCallLibCmd, LocalCpToUtf8("三方支持库命令").c_str());
+	Script::Label::Set(m_KrnlApp.krnl_MCallKrnlLibCmd, LocalCpToUtf8("核心支持库命令").c_str());
+	Script::Label::Set(m_KrnlApp.krnl_MReadProperty, LocalCpToUtf8("读取组件属性").c_str());
+	Script::Label::Set(m_KrnlApp.krnl_MWriteProperty, LocalCpToUtf8("设置组件属性").c_str());
+	Script::Label::Set(m_KrnlApp.krnl_MMalloc, LocalCpToUtf8("分配内存").c_str());
+	Script::Label::Set(m_KrnlApp.krnl_MRealloc, LocalCpToUtf8("重新分配内存").c_str());
+	Script::Label::Set(m_KrnlApp.krnl_MFree, LocalCpToUtf8("释放内存").c_str());
+	Script::Label::Set(m_KrnlApp.krnl_MExitProcess, LocalCpToUtf8("结束").c_str());
+	Script::Label::Set(m_KrnlApp.krnl_MMessageLoop, LocalCpToUtf8("窗口消息循环").c_str());
+	Script::Label::Set(m_KrnlApp.krnl_MLoadBeginWin, LocalCpToUtf8("载入启动窗口").c_str());
+	Script::Label::Set(m_KrnlApp.krnl_MOtherHelp, LocalCpToUtf8("辅助函数").c_str());
+}
+
 bool EAnalyEngine::ParseLibInfomation(duint lpLibStartAddr, duint dwLibCount)
 {
 	for (unsigned int nLibIndex = 0; nLibIndex < dwLibCount; ++nLibIndex) {
@@ -99,6 +121,55 @@ bool EAnalyEngine::ParseLibInfomation(duint lpLibStartAddr, duint dwLibCount)
 	return true;
 }
 
+bool EAnalyEngine::ParseUserImports(duint dwApiCount, duint lpModuleName, duint lpApiName)
+{
+	unsigned char* pszLibnameAddr = SectionManager::LinearAddrToVirtualAddr(lpModuleName);
+	unsigned char* pszApinameAddr = SectionManager::LinearAddrToVirtualAddr(lpApiName);
+
+	for (unsigned int n = 0; n < dwApiCount; ++n) {
+		char* pszLibname = (char*)SectionManager::LinearAddrToVirtualAddr(ReadUInt(pszLibnameAddr));
+		char* pszApiname = (char*)SectionManager::LinearAddrToVirtualAddr(ReadUInt(pszApinameAddr));
+
+		ImportsApi eImportsApi;
+		eImportsApi.LibName = pszLibname;
+		eImportsApi.ApiName = pszApiname;
+
+		mVec_ImportsApi.push_back(eImportsApi);
+		pszLibnameAddr += 4;
+		pszApinameAddr += 4;
+	}
+	return true;
+}
+
+duint EAnalyEngine::GetUserCodeEndAddr()
+{
+	//首先尝试通过特征码来定位用户代码结束地址
+	duint codeEndAddr = SeachUserCodeEndAddr();
+	if (codeEndAddr) {
+		codeEndAddr = codeEndAddr + 1;
+		codeEndAddr = codeEndAddr + ReadInt(LinearAddrToVirtualAddr(codeEndAddr + 1)) + 5;
+
+		QString outMsg;
+		outMsg.sprintf("->%s: %08X",LocalCpToUtf8("易语言程序入口").c_str(), codeEndAddr);
+		m_outMsg->appendPlainText(outMsg);
+		Script::Comment::Set(codeEndAddr,LocalCpToUtf8("易语言程序入口").c_str());
+		return codeEndAddr;
+	}
+
+	//系统支持库函数中的最小地址函数作为结束地址
+	if (mVec_LibFunc[0].vec_Funcs.size()) {
+		unsigned int nMinAddress = 0xFFFFFFFF;
+		for (unsigned int n = 0; n < mVec_LibFunc[0].vec_Funcs.size(); ++n) {
+			if (mVec_LibFunc[0].vec_Funcs[n].addr < nMinAddress) {
+				nMinAddress = mVec_LibFunc[0].vec_Funcs[n].addr;
+			}
+		}
+		return nMinAddress;
+	}
+
+	return mVec_segInfo[0].m_segStart + mVec_segInfo[0].m_segSize - 1;
+}
+
 bool EAnalyEngine::Parse_EStatic(duint eHeadAddr)
 {
 	EStaticHead eHead;
@@ -116,8 +187,13 @@ bool EAnalyEngine::Parse_EStatic(duint eHeadAddr)
 	if (dwKrnlEntry == 0) {
 		dwKrnlEntry = eHead.lpEWindow;
 	}
-	m_UserCodeStartAddr= eHead.lpStartCode;
+	ParseKrnlInterface(dwKrnlEntry);
+	m_UserCodeStartAddr = eHead.lpStartCode;
+	m_UserCodeEndAddr = GetUserCodeEndAddr();
 
+	if (eHead.dwApiCount) {
+		ParseUserImports(eHead.dwApiCount, eHead.lpModuleName, eHead.lpApiName);
+	}
 
 	return true;
 }

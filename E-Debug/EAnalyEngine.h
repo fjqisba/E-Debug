@@ -83,6 +83,29 @@ struct LibFuncMap
 	std::vector<FuncInfo> vec_Funcs;
 };
 
+struct ImportsApi
+{
+	std::string LibName;
+	std::string ApiName;
+};
+
+struct mid_KrnlApp
+{
+	duint krnl_MReportError;               //错误回调
+	duint krnl_MCallDllCmd;                //DLL命令
+	duint krnl_MCallLibCmd;                //三方支持库命令
+	duint krnl_MCallKrnlLibCmd;            //核心支持库命令
+	duint krnl_MReadProperty;              //读取组件属性
+	duint krnl_MWriteProperty;             //设置组件属性
+	duint krnl_MMalloc;                    //分配内存
+	duint krnl_MRealloc;                   //重新分配内存
+	duint krnl_MFree;                      //释放内存
+	duint krnl_MExitProcess;               //结束
+	duint krnl_MMessageLoop;               //窗口消息循环
+	duint krnl_MLoadBeginWin;              //载入启动窗口
+	duint krnl_MOtherHelp;                 //辅助功能
+};
+
 class QPlainTextEdit;
 class EAnalyEngine:public SectionManager
 {
@@ -93,8 +116,11 @@ public:
 	bool InitEAnalyEngine(unsigned int anyAddr, QPlainTextEdit* outMsg);
 private:
 	bool Parse_EStatic(duint eHeadAddr);
-
+	void ParseKrnlInterface(duint lpKrnlEntry);
 	bool ParseLibInfomation(duint lpLibStartAddr, duint dwLibCount);
+	bool ParseUserImports(duint dwApiCount, duint lpModuleName, duint lpApiName);
+	//获取用户代码结束地址
+	duint GetUserCodeEndAddr();
 public:
 	//0是失败,1是静态编译,2是动态编译,3是独立编译,4是黑月编译
 	unsigned int m_AnalysisMode = 0;
@@ -102,9 +128,15 @@ public:
 	bool m_bAnalySuccess = false;
 	//用户代码起始地址
 	duint m_UserCodeStartAddr = 0;
+	//用户代码结束地址
+	duint m_UserCodeEndAddr = 0;
+
+	mid_KrnlApp m_KrnlApp;
 public:
 	//库函数表
 	std::vector<LibFuncMap> mVec_LibFunc;
+	//导入函数表
+	std::vector<ImportsApi> mVec_ImportsApi;
 	//日志打印输出
 	QPlainTextEdit* m_outMsg = nullptr;
 };

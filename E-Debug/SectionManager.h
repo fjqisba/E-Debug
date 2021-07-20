@@ -21,8 +21,13 @@ public:
 	unsigned char* LinearAddrToVirtualAddr(unsigned int LinerAddr);
 	//虚拟地址转换为线性地址
 	unsigned int VirtualAddrToLinearAddr(unsigned char* pVirtualAddr);
-private:
-	std::vector<SegmentInfomation> mVec_segInfo;
 
+	//模糊搜索
+	unsigned int SeachUserCodeEndAddr();
+	//参数为call指令所在的实际地址,返回跳转得到的实际地址
+	unsigned int ReadCallAddr(unsigned int addr);
+public:
+	std::vector<SegmentInfomation> mVec_segInfo;
+private:
 	QPlainTextEdit* m_outMsg = nullptr;
 };
