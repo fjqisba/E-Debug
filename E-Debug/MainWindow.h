@@ -15,6 +15,8 @@ public:
 private slots:
 	void on_LibNameSelected(const QString& currentText);
 	void on_FuncDoubleClicked(QTableWidgetItem* pItem);
+	void on_ApiMenu(const QPoint&);
+	void on_MsgSelected();
 private:
 	Ui::MainWindow ui;
 	EAnalyEngine eAnalyEngine;

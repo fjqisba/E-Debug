@@ -87,6 +87,26 @@ struct ImportsApi
 {
 	std::string LibName;
 	std::string ApiName;
+	int refCount;
+};
+
+struct controlIndex
+{
+	unsigned int windowId;
+	unsigned int controlId;
+
+	bool operator<(const controlIndex& compareValue)const {
+		if (windowId == compareValue.windowId) {
+			return controlId < compareValue.controlId;
+		}
+		return windowId < compareValue.windowId;
+	}
+};
+
+struct ControlProperty
+{
+	std::string controlName;
+	
 };
 
 struct mid_KrnlApp
@@ -137,6 +157,8 @@ public:
 	std::vector<LibFuncMap> mVec_LibFunc;
 	//导入函数表
 	std::vector<ImportsApi> mVec_ImportsApi;
+	//窗口控件信息
+	std::map<controlIndex, ControlProperty> mMap_Control;
 	//日志打印输出
 	QPlainTextEdit* m_outMsg = nullptr;
 };

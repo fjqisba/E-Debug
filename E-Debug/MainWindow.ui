@@ -72,7 +72,7 @@
    <item row="1" column="1">
     <widget class="QTabWidget" name="tabWidget">
      <property name="currentIndex">
-      <number>1</number>
+      <number>2</number>
      </property>
      <widget class="QWidget" name="tab_Func">
       <attribute name="title">
@@ -116,6 +116,9 @@
       <layout class="QGridLayout" name="gridLayout_3">
        <item row="0" column="0">
         <widget class="QTableWidget" name="table_Api">
+         <property name="contextMenuPolicy">
+          <enum>Qt::CustomContextMenu</enum>
+         </property>
          <property name="editTriggers">
           <set>QAbstractItemView::NoEditTriggers</set>
          </property>
@@ -136,6 +139,21 @@
       <attribute name="title">
        <string>窗口控件</string>
       </attribute>
+      <layout class="QGridLayout" name="gridLayout_4">
+       <item row="0" column="0">
+        <widget class="QComboBox" name="combo_Window">
+         <property name="maximumSize">
+          <size>
+           <width>250</width>
+           <height>16777215</height>
+          </size>
+         </property>
+        </widget>
+       </item>
+       <item row="1" column="0">
+        <widget class="QTableWidget" name="table_Control"/>
+       </item>
+      </layout>
      </widget>
     </widget>
    </item>

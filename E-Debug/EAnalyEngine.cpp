@@ -130,7 +130,7 @@ bool EAnalyEngine::ParseUserImports(duint dwApiCount, duint lpModuleName, duint 
 		char* pszLibname = (char*)SectionManager::LinearAddrToVirtualAddr(ReadUInt(pszLibnameAddr));
 		char* pszApiname = (char*)SectionManager::LinearAddrToVirtualAddr(ReadUInt(pszApinameAddr));
 
-		ImportsApi eImportsApi;
+		ImportsApi eImportsApi = {};
 		eImportsApi.LibName = pszLibname;
 		eImportsApi.ApiName = pszApiname;
 
@@ -194,6 +194,8 @@ bool EAnalyEngine::Parse_EStatic(duint eHeadAddr)
 	if (eHead.dwApiCount) {
 		ParseUserImports(eHead.dwApiCount, eHead.lpModuleName, eHead.lpApiName);
 	}
+
+
 
 	return true;
 }

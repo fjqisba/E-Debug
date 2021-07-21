@@ -2,10 +2,12 @@
 #include <QMessageBox>
 #include <QTextCodec>
 #include <QString>
+#include <QMenu>
 #include "pluginsdk/_scriptapi_label.h"
 #include "pluginsdk/_scriptapi_gui.h"
 #include "pluginsdk/_scriptapi_pattern.h"
 #include "pluginsdk/_scriptapi_comment.h"
+#include "pluginsdk/_scriptapi_memory.h"
 #include "TrieTree.h"
 #include "public.h"
 
@@ -34,12 +36,12 @@ MainWindow::MainWindow(unsigned int dwBase, QWidget* parent) : QWidget(parent)
 
 	connect(ui.list_LibInfo, SIGNAL(currentTextChanged(const QString&)), SLOT(on_LibNameSelected(const QString&)));
 	connect(ui.table_Func,SIGNAL(itemDoubleClicked(QTableWidgetItem*)),SLOT(on_FuncDoubleClicked(QTableWidgetItem*)));
+	connect(ui.outMsg, SIGNAL(selectionChanged()), SLOT(on_MsgSelected()));
 
 	if (!eAnalyEngine.InitEAnalyEngine(dwBase, ui.outMsg)) {
 		QMessageBox::critical(0, QStringLiteral("抱歉"), QStringLiteral("初始化失败"));
 		return;
 	}
-	
 	
 	//静态编译程序
 	if (eAnalyEngine.m_AnalysisMode == 1) {
@@ -51,6 +53,72 @@ MainWindow::MainWindow(unsigned int dwBase, QWidget* parent) : QWidget(parent)
 MainWindow::~MainWindow()
 {
 	
+}
+
+
+bool isValidAddress(QString& src)
+{
+	std::string asciiStr = src.toStdString();
+	const char* s = asciiStr.c_str();
+	while (*s && *s >= '0' && *s <= 'F') s++;
+	if (*s)
+	{
+		return false;
+	}
+	return true;
+}
+
+void MainWindow::on_MsgSelected()
+{
+	QString selectedTxt = ui.outMsg->textCursor().selectedText();
+	if (selectedTxt.isEmpty()) {
+		return;
+	}
+
+	if (isValidAddress(selectedTxt) && selectedTxt.length() == 0x8) {
+		unsigned int goAddr = selectedTxt.toUInt(nullptr, 16);
+		if (Script::Memory::IsValidPtr(goAddr)) {
+			GuiDisasmAt(goAddr, 0);
+		}
+	}
+}
+
+void MainWindow::on_ApiMenu(const QPoint& point)
+{
+	QTableWidgetItem* currentItem = ui.table_Api->itemAt(point);
+	if (!currentItem) {
+		return;
+	}
+
+	QMenu* popMenu = new QMenu(ui.table_Api);
+	QAction* findAction = popMenu->addAction(QStringLiteral("查找引用"));
+
+	if (popMenu->exec(QCursor::pos()) == findAction) {
+		ui.outMsg->clear();
+		ui.outMsg->appendPlainText(QStringLiteral("->执行命令 --==查找引用==--"));
+		duint scanStartAddr = eAnalyEngine.m_UserCodeStartAddr;
+		unsigned char apiCode[] = { 0xB8,0x00,0x00,0x00,0x00,0xE8 };
+		int apiIndex = ui.table_Api->item(currentItem->row(), 0)->text().toUInt();
+
+		WriteUInt(apiCode + 1, apiIndex);
+		std::string strApiCode = 十到十六(apiCode, sizeof(apiCode));
+		do
+		{	
+			scanStartAddr = Script::Pattern::FindMem(scanStartAddr + 1, eAnalyEngine.m_UserCodeEndAddr - scanStartAddr, strApiCode.c_str());
+			if (!scanStartAddr) {
+				break;
+			}
+			unsigned int callAddr = eAnalyEngine.ReadCallAddr(scanStartAddr + 5);
+			callAddr = ReadUInt(eAnalyEngine.LinearAddrToVirtualAddr(callAddr + 2));
+			callAddr = ReadUInt(eAnalyEngine.LinearAddrToVirtualAddr(callAddr));
+			if (callAddr == eAnalyEngine.m_KrnlApp.krnl_MCallDllCmd) {
+				QString outMsg;
+				outMsg.sprintf("%08X    mov eax,%08X     %s", scanStartAddr, apiIndex, LocalCpToUtf8(eAnalyEngine.mVec_ImportsApi[apiIndex].ApiName.c_str()).c_str());
+				ui.outMsg->appendPlainText(outMsg);
+			}
+		} while (true);
+
+	}
 }
 
 void MainWindow::on_FuncDoubleClicked(QTableWidgetItem* pItem)
@@ -157,7 +225,25 @@ bool MainWindow::InitWindow_EStatic()
 		ui.table_Api->setColumnWidth(2, 340);   //设置第一列宽度
 		ui.table_Api->setHorizontalHeaderLabels(QStringList() << QStringLiteral("序号") << QStringLiteral("DLL库") << QStringLiteral("命令名称") << QStringLiteral("引用次数"));
 
+		connect(ui.table_Api, SIGNAL(customContextMenuRequested(const QPoint&)), SLOT(on_ApiMenu(const QPoint&)));
 		ui.tabWidget->addTab(ui.tab_Api, QStringLiteral("Api命令"));
+		duint scanStartAddr = eAnalyEngine.m_UserCodeStartAddr;
+		do
+		{
+			scanStartAddr = Script::Pattern::FindMem(scanStartAddr + 1, eAnalyEngine.m_UserCodeEndAddr - scanStartAddr, "B8????0000E8");
+			if (!scanStartAddr) {
+				break;
+			}
+			unsigned int callAddr = eAnalyEngine.ReadCallAddr(scanStartAddr + 5);
+			callAddr = ReadUInt(eAnalyEngine.LinearAddrToVirtualAddr(callAddr + 2));
+			callAddr = ReadUInt(eAnalyEngine.LinearAddrToVirtualAddr(callAddr));
+			if (callAddr == eAnalyEngine.m_KrnlApp.krnl_MCallDllCmd) {
+				int index = ReadUInt(eAnalyEngine.LinearAddrToVirtualAddr(scanStartAddr + 1));
+				Script::Comment::Set(scanStartAddr, LocalCpToUtf8(eAnalyEngine.mVec_ImportsApi[index].ApiName.c_str()).c_str());
+				eAnalyEngine.mVec_ImportsApi[index].refCount++;
+			}
+		} while (true);
+
 		for (unsigned int n = 0; n < eAnalyEngine.mVec_ImportsApi.size(); ++n) {
 			int insertRow = ui.table_Api->rowCount();
 			ui.table_Api->insertRow(insertRow);
@@ -181,23 +267,13 @@ bool MainWindow::InitWindow_EStatic()
 			QTableWidgetItem* pItemFunc = new QTableWidgetItem(codec->toUnicode(eAnalyEngine.mVec_ImportsApi[n].ApiName.c_str()));
 			pItemFunc->setTextAlignment(Qt::AlignHCenter | Qt::AlignVCenter);
 			ui.table_Api->setItem(insertRow, 2, pItemFunc);
+
+			QTableWidgetItem* pItemCount = new QTableWidgetItem(QString::number(eAnalyEngine.mVec_ImportsApi[n].refCount));
+			pItemCount->setTextAlignment(Qt::AlignHCenter | Qt::AlignVCenter);
+			ui.table_Api->setItem(insertRow, 3, pItemCount);
 		}
 
-		duint scanStartAddr = eAnalyEngine.m_UserCodeStartAddr;
-		do 
-		{
-			scanStartAddr = Script::Pattern::FindMem(scanStartAddr + 1, eAnalyEngine.m_UserCodeEndAddr - scanStartAddr, "B8????0000E8");
-			if (!scanStartAddr) {
-				break;
-			}
-			unsigned int callAddr = eAnalyEngine.ReadCallAddr(scanStartAddr + 5);
-			callAddr = ReadUInt(eAnalyEngine.LinearAddrToVirtualAddr(callAddr + 2));
-			callAddr = ReadUInt(eAnalyEngine.LinearAddrToVirtualAddr(callAddr));
-			if (callAddr == eAnalyEngine.m_KrnlApp.krnl_MCallDllCmd) {
-				int index = ReadUInt(eAnalyEngine.LinearAddrToVirtualAddr(scanStartAddr + 1));
-				Script::Comment::Set(scanStartAddr, LocalCpToUtf8(eAnalyEngine.mVec_ImportsApi[index].ApiName.c_str()).c_str());
-			}
-		} while (true);
+
 	}
 
 	

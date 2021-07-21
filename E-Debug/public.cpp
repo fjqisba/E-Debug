@@ -43,9 +43,21 @@ unsigned char HexToBin(unsigned char HexCode)
 	return BinMap[HexCode];
 }
 
+
+
 const char* UCharToStr(unsigned char c)
 {
 	return ByteMap[c];
+}
+
+std::string Ê®µ½Ê®Áù(unsigned char* pBuf, unsigned int len)
+{
+	std::string ret;
+	ret.reserve(len << 1);
+	for (unsigned int n = 0; n < len; ++n) {
+		ret.append(UCharToStr(pBuf[n]));
+	}
+	return ret;
 }
 
 void HexToBin(std::string& HexCode, unsigned char* BinCode)
@@ -93,6 +105,11 @@ int ReadInt(unsigned char* pBuf)
 unsigned int ReadUInt(unsigned char* pBuf)
 {
 	return *(unsigned int*)pBuf;
+}
+
+void WriteUInt(unsigned char* pBuf, unsigned int value)
+{
+	*(unsigned int*)pBuf = value;
 }
 
 unsigned short ReadUShort(unsigned char* pBuf)

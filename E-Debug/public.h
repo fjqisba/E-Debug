@@ -16,11 +16,15 @@ std::wstring GetCurrentDirW();
 unsigned char HexToBin(unsigned char HexCode);
 void HexToBin(std::string& HexCode, unsigned char* BinCode);
 
+std::string 十到十六(unsigned char* pBuf,unsigned int len);
+
+
 //十到十六
 const char* UCharToStr(unsigned char c);
 
 int ReadInt(unsigned char* pBuf);
 unsigned int ReadUInt(unsigned char* pBuf);
+void WriteUInt(unsigned char* pBuf,unsigned int value);
 unsigned char ReadUChar(unsigned char* pBuf);
 unsigned short ReadUShort(unsigned char* pBuf);
 
