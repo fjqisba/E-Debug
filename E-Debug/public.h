@@ -27,6 +27,8 @@ unsigned int ReadUInt(unsigned char* pBuf);
 void WriteUInt(unsigned char* pBuf,unsigned int value);
 unsigned char ReadUChar(unsigned char* pBuf);
 unsigned short ReadUShort(unsigned char* pBuf);
+std::string ReadStr(unsigned char* pBuf);
+
 
 std::wstring LocalCpToUtf16(const char* str);
 

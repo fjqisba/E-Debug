@@ -13,6 +13,9 @@
     <Filter Include="Resource Files">
       <UniqueIdentifier>{7718643b-4749-421e-a198-ef317323589c}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Header Files\EAppControl">
+      <UniqueIdentifier>{1c727970-4b17-464b-9f19-4c59015b065d}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="plugin.cpp">
@@ -39,6 +42,12 @@
     <ClCompile Include="SymbolTable.cpp">
       <Filter>Header Files</Filter>
     </ClCompile>
+    <ClCompile Include="EAppControl\EAppControlFactory.cpp">
+      <Filter>Header Files\EAppControl</Filter>
+    </ClCompile>
+    <ClCompile Include="EAppControl\EAppControl.cpp">
+      <Filter>Header Files\EAppControl</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pluginmain.h">
@@ -61,6 +70,12 @@
     </ClInclude>
     <ClInclude Include="SymbolTable.h">
       <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="EAppControl\EAppControlFactory.h">
+      <Filter>Header Files\EAppControl</Filter>
+    </ClInclude>
+    <ClInclude Include="EAppControl\EAppControl.h">
+      <Filter>Header Files\EAppControl</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

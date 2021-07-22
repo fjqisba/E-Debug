@@ -14,6 +14,7 @@
 MainWindow::MainWindow(unsigned int dwBase, QWidget* parent) : QWidget(parent)
 {
 	ui.setupUi(this);
+	
 	ui.tabWidget->clear();
 	
 	//设置版本号
@@ -38,11 +39,12 @@ MainWindow::MainWindow(unsigned int dwBase, QWidget* parent) : QWidget(parent)
 	connect(ui.table_Func,SIGNAL(itemDoubleClicked(QTableWidgetItem*)),SLOT(on_FuncDoubleClicked(QTableWidgetItem*)));
 	connect(ui.outMsg, SIGNAL(selectionChanged()), SLOT(on_MsgSelected()));
 
+
 	if (!eAnalyEngine.InitEAnalyEngine(dwBase, ui.outMsg)) {
 		QMessageBox::critical(0, QStringLiteral("抱歉"), QStringLiteral("初始化失败"));
 		return;
 	}
-	
+
 	//静态编译程序
 	if (eAnalyEngine.m_AnalysisMode == 1) {
 		InitWindow_EStatic();
@@ -66,6 +68,38 @@ bool isValidAddress(QString& src)
 		return false;
 	}
 	return true;
+}
+
+void MainWindow::on_WindowSelected(int index)
+{
+	ui.table_Control->setRowCount(0);
+	mid_GuiInfo& eGuiInfo = eAnalyEngine.mVec_GuiInfo[index];
+
+	QTextCodec* codec = QTextCodec::codecForName("GB2312");
+
+	ui.table_Control->setSortingEnabled(false);
+	for (unsigned int n = 0; n < eGuiInfo.vec_ControlInfo.size(); ++n) {
+		mid_ControlInfo& eControlInfo = eGuiInfo.vec_ControlInfo[n];
+		int insertRow = ui.table_Control->rowCount();
+		ui.table_Control->insertRow(insertRow);
+		//设置每行高度
+		ui.table_Control->setRowHeight(insertRow, 30);
+
+		QString strControlId;
+		strControlId.sprintf("0x%08X", eControlInfo.controlId);
+		QTableWidgetItem* pItemControlId = new QTableWidgetItem(strControlId);
+		pItemControlId->setTextAlignment(Qt::AlignHCenter | Qt::AlignVCenter);
+		ui.table_Control->setItem(insertRow, 0, pItemControlId);
+
+		QTableWidgetItem* pItemControlType = new QTableWidgetItem(codec->toUnicode(eControlInfo.controlTypeName.c_str()));
+		pItemControlType->setTextAlignment(Qt::AlignHCenter | Qt::AlignVCenter);
+		ui.table_Control->setItem(insertRow, 1, pItemControlType);
+
+		QTableWidgetItem* pItemControlName = new QTableWidgetItem(codec->toUnicode(eControlInfo.controlName.c_str()));
+		pItemControlName->setTextAlignment(Qt::AlignHCenter | Qt::AlignVCenter);
+		ui.table_Control->setItem(insertRow, 2, pItemControlName);
+	}
+	ui.table_Control->setSortingEnabled(true);
 }
 
 void MainWindow::on_MsgSelected()
@@ -137,10 +171,10 @@ void MainWindow::on_LibNameSelected(const QString& currentText)
 {
 	ui.table_Func->setRowCount(0);
 	
-	for (unsigned int nLibIndex = 0; nLibIndex < eAnalyEngine.mVec_LibFunc.size(); ++nLibIndex) {
-		LibFuncMap& eLibMap = eAnalyEngine.mVec_LibFunc[nLibIndex];
+	for (unsigned int nLibIndex = 0; nLibIndex < eAnalyEngine.mVec_LibInfo.size(); ++nLibIndex) {
+		ElibInfo& eLibInfo = eAnalyEngine.mVec_LibInfo[nLibIndex];
 
-		std::string uLibName = LocalCpToUtf8(eLibMap.libName.c_str());
+		std::string uLibName = LocalCpToUtf8(eLibInfo.libName.c_str());
 		int index = currentText.indexOf(uLibName.c_str());
 		if (index == -1) {
 			continue;
@@ -149,19 +183,19 @@ void MainWindow::on_LibNameSelected(const QString& currentText)
 		//关闭排序功能
 		ui.table_Func->setSortingEnabled(false);
 		QTextCodec* codec = QTextCodec::codecForName("GB2312");
-		for (unsigned int nFuncIndex = 0; nFuncIndex < eLibMap.vec_Funcs.size(); ++nFuncIndex) {
+		for (unsigned int nFuncIndex = 0; nFuncIndex < eLibInfo.vec_Funcs.size(); ++nFuncIndex) {
 			int insertRow = ui.table_Func->rowCount();
 			ui.table_Func->insertRow(insertRow);
 			//设置每行高度
 			ui.table_Func->setRowHeight(insertRow, 20);
 
 			QString strAddr;
-			strAddr.sprintf("%08X", eLibMap.vec_Funcs[nFuncIndex].addr);
+			strAddr.sprintf("%08X", eLibInfo.vec_Funcs[nFuncIndex].addr);
 			QTableWidgetItem* pAddrItem = new QTableWidgetItem(strAddr);
 			pAddrItem->setTextAlignment(Qt::AlignHCenter | Qt::AlignVCenter);
 			ui.table_Func->setItem(insertRow, 0, pAddrItem);
 
-			QString strName = codec->toUnicode(eLibMap.vec_Funcs[nFuncIndex].name.c_str());
+			QString strName = codec->toUnicode(eLibInfo.vec_Funcs[nFuncIndex].name.c_str());
 			QTableWidgetItem* pNameItem = new QTableWidgetItem(strName);
 			pNameItem->setTextAlignment(Qt::AlignHCenter | Qt::AlignVCenter);
 			ui.table_Func->setItem(insertRow, 1, pNameItem);
@@ -177,20 +211,20 @@ bool MainWindow::InitWindow_EStatic()
 
 	ui.tabWidget->addTab(ui.tab_Func, QStringLiteral("函数识别"));
 	QTextCodec* codec = QTextCodec::codecForName("GB2312");
-	for (unsigned int nLibIndex = 0; nLibIndex < eAnalyEngine.mVec_LibFunc.size(); ++nLibIndex) {
+	for (unsigned int nLibIndex = 0; nLibIndex < eAnalyEngine.mVec_LibInfo.size(); ++nLibIndex) {
 
-		LibFuncMap& eLibMap = eAnalyEngine.mVec_LibFunc[nLibIndex];
-		std::string libPath = GetCurrentDirA() + "\\plugins\\esig\\" + eLibMap.libName + ".esig";
+		ElibInfo& eLibInfo = eAnalyEngine.mVec_LibInfo[nLibIndex];
+		std::string libPath = GetCurrentDirA() + "\\plugins\\esig\\" + eLibInfo.libName + ".esig";
 
 		//函数识别
 		TrieTree esigTree(&eAnalyEngine);
 		if (esigTree.LoadSig(libPath.c_str())) {
-			for (unsigned int nFuncIndex = 0; nFuncIndex < eLibMap.vec_Funcs.size(); ++nFuncIndex) {
-				char* pFuncName = esigTree.MatchFunc(eAnalyEngine.LinearAddrToVirtualAddr(eLibMap.vec_Funcs[nFuncIndex].addr));
+			for (unsigned int nFuncIndex = 0; nFuncIndex < eLibInfo.vec_Funcs.size(); ++nFuncIndex) {
+				char* pFuncName = esigTree.MatchFunc(eAnalyEngine.LinearAddrToVirtualAddr(eLibInfo.vec_Funcs[nFuncIndex].addr));
 				if (pFuncName) {
-					eLibMap.vec_Funcs[nFuncIndex].name = pFuncName;
+					eLibInfo.vec_Funcs[nFuncIndex].name = pFuncName;
 					std::string u16FuncName = LocalCpToUtf8(pFuncName);
-					Script::Label::Set(eLibMap.vec_Funcs[nFuncIndex].addr, u16FuncName.c_str());
+					Script::Label::Set(eLibInfo.vec_Funcs[nFuncIndex].addr, u16FuncName.c_str());
 				}
 				else {
 					//To do...模糊匹配
@@ -201,32 +235,37 @@ bool MainWindow::InitWindow_EStatic()
 			QString logMsg = QStringLiteral("->加载特征文件失败:") + codec->toUnicode(libPath.c_str());
 			ui.outMsg->appendPlainText(logMsg);
 		}
+
+		
 		//更新界面
-		QString LibNameLine = codec->toUnicode(eLibMap.libName.c_str());
+		QString LibNameLine = codec->toUnicode(eLibInfo.libName.c_str());
+		LibNameLine.append(QString::number(eLibInfo.nMajorVersion) + QStringLiteral(".") + QString::number(eLibInfo.nMinorVersion));
 		LibNameLine.append(QStringLiteral("(命令总数:"));
-		LibNameLine.append(QString::number(eLibMap.vec_Funcs.size()));
+		LibNameLine.append(QString::number(eLibInfo.vec_Funcs.size()));
 		LibNameLine.append(QStringLiteral(")"));
 		ui.list_LibInfo->insertItem(ui.list_LibInfo->count(), new QListWidgetItem(LibNameLine));
 
-		QString LibGuidLine = "   " + QString::fromLocal8Bit(eLibMap.libGuid.c_str());
+		QString LibGuidLine = "   " + QString::fromLocal8Bit(eLibInfo.libGuid.c_str());
 		QListWidgetItem* pGuidItem = new QListWidgetItem(LibGuidLine);
 		pGuidItem->setTextColor(QColor(150, 150, 150));
 		ui.list_LibInfo->insertItem(ui.list_LibInfo->count(), pGuidItem);
 		ui.list_LibInfo->insertItem(ui.list_LibInfo->count(), new QListWidgetItem(QStringLiteral("——————————————————————————————")));
 	}
 
+	
+
 	//开始生成DLL命令表
 	if (eAnalyEngine.mVec_ImportsApi.size()) {
 
+		ui.tabWidget->addTab(ui.tab_Api, QStringLiteral("Api命令"));
 		//设置列数
 		ui.table_Api->setColumnCount(4);
-		ui.table_Api->setColumnWidth(0, 60);   //设置第一列宽度
-		ui.table_Api->setColumnWidth(1, 120);   //设置第一列宽度
-		ui.table_Api->setColumnWidth(2, 340);   //设置第一列宽度
+		ui.table_Api->setColumnWidth(0, 60);   //设置第1列宽度
+		ui.table_Api->setColumnWidth(1, 120);   //设置第2列宽度
+		ui.table_Api->setColumnWidth(2, 340);   //设置第3列宽度
 		ui.table_Api->setHorizontalHeaderLabels(QStringList() << QStringLiteral("序号") << QStringLiteral("DLL库") << QStringLiteral("命令名称") << QStringLiteral("引用次数"));
 
 		connect(ui.table_Api, SIGNAL(customContextMenuRequested(const QPoint&)), SLOT(on_ApiMenu(const QPoint&)));
-		ui.tabWidget->addTab(ui.tab_Api, QStringLiteral("Api命令"));
 		duint scanStartAddr = eAnalyEngine.m_UserCodeStartAddr;
 		do
 		{
@@ -272,10 +311,33 @@ bool MainWindow::InitWindow_EStatic()
 			pItemCount->setTextAlignment(Qt::AlignHCenter | Qt::AlignVCenter);
 			ui.table_Api->setItem(insertRow, 3, pItemCount);
 		}
-
-
 	}
 
+
+	//开始生成窗口控件信息
+	if (eAnalyEngine.mVec_GuiInfo.size()) {
+		ui.tabWidget->addTab(ui.tab_Control, QStringLiteral("窗口控件"));
+		ui.table_Control->setColumnCount(3);
+		ui.table_Control->setColumnWidth(0, 110);   //设置第1列宽度
+		ui.table_Control->setColumnWidth(1, 120);   //设置第2列宽度
+		ui.table_Control->horizontalHeader()->setStretchLastSection(true);
+		ui.table_Control->setHorizontalHeaderLabels(QStringList() << QStringLiteral("控件ID") << QStringLiteral("控件类型") << QStringLiteral("控件名称"));
+		connect(ui.combo_Window, SIGNAL(currentIndexChanged(int)), SLOT(on_WindowSelected(int)));
+
+		for (unsigned int nIndexWindow = 0; nIndexWindow < eAnalyEngine.mVec_GuiInfo.size(); ++nIndexWindow) {
+			mid_GuiInfo& eGuiInfo = eAnalyEngine.mVec_GuiInfo[nIndexWindow];
+			QString windowName;
+			windowName.sprintf("%s_0x%08X(%d)", LocalCpToUtf8("窗口").c_str(), eGuiInfo.windowId, eGuiInfo.vec_ControlInfo.size());
+			ui.combo_Window->addItem(windowName);
+			for (unsigned int nIndexControl = 0; nIndexControl < eGuiInfo.vec_ControlInfo.size(); ++nIndexControl) {
+				mid_ControlInfo& eControlInfo = eGuiInfo.vec_ControlInfo[nIndexControl];
+				for (unsigned int nIndexEvent = 0; nIndexEvent < eControlInfo.vec_eventInfo.size(); ++nIndexEvent) {
+					
+				}
+			}
+		}
+		on_WindowSelected(0);
+	}
 	
 	return true;
 }

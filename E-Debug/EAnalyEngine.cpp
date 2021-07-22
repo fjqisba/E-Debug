@@ -34,6 +34,36 @@ EAnalyEngine::~EAnalyEngine()
 
 }
 
+unsigned int krnln_GetIDSubType(unsigned int ID)
+{
+	return ID & 0xF0000000;
+}
+
+unsigned int krnln_GetIDGroupType(unsigned int ID)
+{
+	return ID & 0xF000000;
+}
+
+bool krnln_IsMenuItemID(unsigned int ID)
+{
+	return krnln_GetIDGroupType(ID) == 0x6000000 && krnln_GetIDSubType(ID) == 0x20000000;
+}
+
+unsigned int GetDataTypeType(unsigned int typeID)
+{
+	unsigned int result = typeID;
+	if (typeID)
+	{
+		if ((typeID & 0xC0000000) == 0x80000000) {
+			result = 1;
+		}
+		else {
+			result = ((typeID & 0xC0000000) != 0x40000000) + 2;
+		}
+	}
+	return result;
+}
+
 bool EAnalyEngine::InitEAnalyEngine(unsigned int anyAddr, QPlainTextEdit* outMsg)
 {
 	m_outMsg = outMsg;
@@ -94,28 +124,41 @@ bool EAnalyEngine::ParseLibInfomation(duint lpLibStartAddr, duint dwLibCount)
 			continue;
 		}
 
-		mid_ELibInfo eLibInfo;
-		eLibInfo.m_Name = get_shortstring(tmpLibInfo.m_lpName);
-		eLibInfo.m_Guid = get_shortstring(tmpLibInfo.m_lpGuid);
-		eLibInfo.m_nMajorVersion = tmpLibInfo.m_nMajorVersion;
-		eLibInfo.m_nMinorVersion = tmpLibInfo.m_nMinorVersion;
-
+	
 		//解析出全部的库函数数据
-		LibFuncMap eLibFuncMap;
-		eLibFuncMap.libName = get_shortstring(tmpLibInfo.m_lpName);
-		eLibFuncMap.libGuid = get_shortstring(tmpLibInfo.m_lpGuid);
+		ElibInfo eLibInfo;
+		eLibInfo.libName = get_shortstring(tmpLibInfo.m_lpName);
+		eLibInfo.libGuid = get_shortstring(tmpLibInfo.m_lpGuid);
+		eLibInfo.nMajorVersion = tmpLibInfo.m_nMajorVersion;
+		eLibInfo.nMinorVersion = tmpLibInfo.m_nMinorVersion;
 		if (tmpLibInfo.m_nCmdCount && tmpLibInfo.m_lpCmdsFunc) {
 			duint* pFuncBuf = (duint*)BridgeAlloc(tmpLibInfo.m_nCmdCount * 4);
 			Script::Memory::Read(tmpLibInfo.m_lpCmdsFunc, pFuncBuf, tmpLibInfo.m_nCmdCount * 4, 0);
 			for (unsigned int nFuncIndex = 0; nFuncIndex < tmpLibInfo.m_nCmdCount; ++nFuncIndex) {
-				LibFuncMap::FuncInfo tmpFunc;
+				ElibInfo::FuncInfo tmpFunc;
 				tmpFunc.addr = pFuncBuf[nFuncIndex];
-				eLibFuncMap.vec_Funcs.push_back(tmpFunc);
+				eLibInfo.vec_Funcs.push_back(tmpFunc);
 			}
 			BridgeFree(pFuncBuf);
 		}
 
-		mVec_LibFunc.push_back(eLibFuncMap);
+		//解析支持库中的数据类型
+		duint lpFirstDataType = tmpLibInfo.m_lpDataType;
+		for (int nDataTypeIndex = 0; nDataTypeIndex < tmpLibInfo.m_nDataTypeCount; ++nDataTypeIndex) {
+			LIB_DATA_TYPE_INFO tmpDataTypeInfo;
+			memcpy(&tmpDataTypeInfo,LinearAddrToVirtualAddr(lpFirstDataType), sizeof(LIB_DATA_TYPE_INFO));
+			lpFirstDataType += sizeof(LIB_DATA_TYPE_INFO);
+
+			EDataTypeInfo eDataType;
+			if (tmpDataTypeInfo.m_lpszName) {
+				unsigned int controlTypeId = (nLibIndex + 1) << 0x10;
+				controlTypeId = controlTypeId + (nDataTypeIndex + 1);
+				eDataType.dataTypeName = get_shortstring(tmpDataTypeInfo.m_lpszName);
+			}
+			eLibInfo.vec_DataTypeInfo.push_back(eDataType);
+		}
+
+		mVec_LibInfo.push_back(eLibInfo);
 	}
 
 	return true;
@@ -157,17 +200,214 @@ duint EAnalyEngine::GetUserCodeEndAddr()
 	}
 
 	//系统支持库函数中的最小地址函数作为结束地址
-	if (mVec_LibFunc[0].vec_Funcs.size()) {
+	if (mVec_LibInfo[0].vec_Funcs.size()) {
 		unsigned int nMinAddress = 0xFFFFFFFF;
-		for (unsigned int n = 0; n < mVec_LibFunc[0].vec_Funcs.size(); ++n) {
-			if (mVec_LibFunc[0].vec_Funcs[n].addr < nMinAddress) {
-				nMinAddress = mVec_LibFunc[0].vec_Funcs[n].addr;
+		for (unsigned int n = 0; n < mVec_LibInfo[0].vec_Funcs.size(); ++n) {
+			if (mVec_LibInfo[0].vec_Funcs[n].addr < nMinAddress) {
+				nMinAddress = mVec_LibInfo[0].vec_Funcs[n].addr;
 			}
 		}
 		return nMinAddress;
 	}
 
 	return mVec_segInfo[0].m_segStart + mVec_segInfo[0].m_segSize - 1;
+}
+
+std::string EAnalyEngine::GetControlTypeName(duint typeId)
+{
+	std::string ret;
+	if (GetDataTypeType(typeId) != 3) {
+		return ret;
+	}
+
+	int libIndex = (typeId >> 0x10) - 1;
+	if (libIndex >= mVec_LibInfo.size()) {
+		return ret;
+	}
+	int typeIndex = (unsigned short)typeId - 1;
+	if (typeIndex >= mVec_LibInfo[libIndex].vec_DataTypeInfo.size()) {
+		return ret;
+	}
+	ret = mVec_LibInfo[libIndex].vec_DataTypeInfo[typeIndex].dataTypeName;
+	return ret;
+}
+
+void EAnalyEngine::ParseControlBasciProperty(unsigned char* lpControlInfo, mid_ControlInfo& out_Property)
+{
+	//无用字符串1?
+	ReadStr(lpControlInfo);
+	lpControlInfo += strlen((char*)lpControlInfo) + 1;
+
+	//存储数据?
+	ReadUInt(lpControlInfo);
+	lpControlInfo += 4;
+
+	unsigned int m_left = ReadUInt(lpControlInfo);
+	lpControlInfo += 4;
+
+	unsigned int m_top = ReadUInt(lpControlInfo);
+	lpControlInfo += 4;
+
+	unsigned int m_width = ReadUInt(lpControlInfo);
+	lpControlInfo += 4;
+
+	unsigned int m_height = ReadUInt(lpControlInfo);
+	lpControlInfo += 4;
+
+	//值为0,用来存储LoadCursorA返回的句柄值的
+	unsigned int hCURSOR = ReadUInt(lpControlInfo);
+	lpControlInfo += 4;
+
+	//父控件ID
+	unsigned int fatherControlId = ReadUInt(lpControlInfo);
+	lpControlInfo += 4;
+
+	//子控件数目
+	unsigned int childControlCount = ReadUInt(lpControlInfo);
+	lpControlInfo += 4;
+
+	for (unsigned int n = 0; n < childControlCount; ++n) {
+		unsigned int tmpChildControlId = ReadUInt(lpControlInfo);
+		lpControlInfo += 4;
+		//out_Property.mVec_childControl.push_back(tmpChildControlId);
+	}
+
+	//未知偏移
+	unsigned int offset2 = ReadUInt(lpControlInfo);
+	lpControlInfo += offset2 + 4;
+
+	//标记
+	std::string m_tag = ReadStr(lpControlInfo);
+	lpControlInfo += strlen((char*)lpControlInfo) + 1;
+
+	//未知的值
+	lpControlInfo += 12;
+
+	int dwEventCount = ReadInt(lpControlInfo);
+	lpControlInfo += 4;
+	
+	for (int nIndexEvent = 0; nIndexEvent < dwEventCount; ++nIndexEvent) {
+		mid_EventInfo tmpEvent;
+		tmpEvent.nEventIndex = ReadInt(lpControlInfo);
+		lpControlInfo += 4;
+		tmpEvent.eventAddr = ReadUInt(lpControlInfo) + m_UserCodeStartAddr;
+		lpControlInfo += 4;
+		out_Property.vec_eventInfo.push_back(tmpEvent);
+	}
+	return;
+}
+
+bool EAnalyEngine::ParseGUIResource(duint lpGUIStart, duint infoSize)
+{
+	std::vector<unsigned char> tmpGuiBuf;
+	tmpGuiBuf.resize(infoSize);
+	if (!Script::Memory::Read(lpGUIStart, &tmpGuiBuf[0], infoSize, 0)) {
+		return false;
+	}
+
+	//当前解析地址
+	unsigned char* lpCurrentParseAddr = &tmpGuiBuf[0];
+	std::vector<unsigned int> vec_WindowId;
+	unsigned int dwTotalWindowCount = ReadUInt(&tmpGuiBuf[0]) >> 3;
+	lpCurrentParseAddr += 4;
+
+	for (unsigned int n = 0; n < dwTotalWindowCount; ++n) {
+		vec_WindowId.push_back(ReadUInt(lpCurrentParseAddr));
+		lpCurrentParseAddr += 4;
+	}
+
+	//编译器遗留值?
+	for (unsigned int n = 0; n < dwTotalWindowCount; ++n) {
+		//uint32 unknowId = ReadUInt(lpCurrentParseAddr);
+		lpCurrentParseAddr += 4;
+	}
+
+	for (unsigned int nIndexWindow = 0; nIndexWindow < dwTotalWindowCount; ++nIndexWindow) {
+		unsigned char* lpWindowInfo = lpCurrentParseAddr;
+
+		mid_GuiInfo eGuiInfo;
+		eGuiInfo.windowId = vec_WindowId[nIndexWindow];
+
+		//暂时未知
+		unsigned int unKnownFieldA = ReadUInt(lpWindowInfo);
+		lpWindowInfo += 4;
+		unsigned int unKnownFieldB = ReadUInt(lpWindowInfo);
+		lpWindowInfo += 4;
+
+		//接下来跟着两个CString,都为空
+		lpWindowInfo += 8;
+
+		//单个窗口中的控件总个数
+		unsigned int dwTotalControlCount = ReadUInt(lpWindowInfo);
+		lpWindowInfo += 4;
+
+		//单个窗口中的控件总占用大小
+		unsigned int dwTotalControlSize = ReadUInt(lpWindowInfo);
+		lpWindowInfo += 4;
+
+		//开始解析控件
+		unsigned char* lpControlArray = lpWindowInfo;
+		{
+			//解析控件ID,例如0x160612BC
+			std::vector<unsigned int> vec_ControlId;
+			for (unsigned int j = 0; j < dwTotalControlCount; ++j) {
+				vec_ControlId.push_back(ReadUInt(lpControlArray));
+				lpControlArray += 4;
+			}
+
+			//解析控件偏移
+			std::vector<unsigned int> vec_ControlOffset;
+			for (unsigned int j = 0; j < dwTotalControlCount; ++j) {
+				vec_ControlOffset.push_back(ReadUInt(lpControlArray));
+				lpControlArray += 4;
+			}
+
+			//解析控件属性
+			for (unsigned int nIndexControl = 0; nIndexControl < dwTotalControlCount; ++nIndexControl) {
+				unsigned char* lpControlInfo = lpControlArray + vec_ControlOffset[nIndexControl];
+
+				mid_ControlInfo eControlInfo;
+
+				//控件占用的大小
+				int dwControlSize = ReadInt(lpControlInfo);
+				lpControlInfo += 4;
+
+				eControlInfo.propertyAddr = lpGUIStart + (lpControlInfo - &tmpGuiBuf[0]);
+				eControlInfo.propertySize = dwControlSize;
+
+				//控件类型ID
+				unsigned int dwControlTypeId = ReadUInt(lpControlInfo);
+				lpControlInfo += 4;
+
+				//固定的20个空字节,保留使用?
+				lpControlInfo += 20;
+
+				if (dwControlTypeId == 0x10001) {
+					lpControlInfo += strlen((char*)lpControlInfo)+1;
+					ParseControlBasciProperty(lpControlInfo, eControlInfo);
+				}
+				else if (krnln_IsMenuItemID(vec_ControlId[nIndexControl])) {
+					lpControlInfo += 14;
+					eControlInfo.controlName = ReadStr(lpControlInfo);
+				}
+				else {
+					eControlInfo.controlName = ReadStr(lpControlInfo);
+					lpControlInfo += strlen((char*)lpControlInfo) + 1;
+					ParseControlBasciProperty(lpControlInfo, eControlInfo);
+				}
+
+				eControlInfo.controlId = vec_ControlId[nIndexControl];
+				eControlInfo.controlTypeId = dwControlTypeId;
+				eControlInfo.controlTypeName = GetControlTypeName(dwControlTypeId);
+				eGuiInfo.vec_ControlInfo.push_back(eControlInfo);
+			}
+		}
+
+		mVec_GuiInfo.push_back(eGuiInfo);
+		lpCurrentParseAddr = lpWindowInfo + dwTotalControlSize;
+	}
+
+	return true;
 }
 
 bool EAnalyEngine::Parse_EStatic(duint eHeadAddr)
@@ -195,7 +435,9 @@ bool EAnalyEngine::Parse_EStatic(duint eHeadAddr)
 		ParseUserImports(eHead.dwApiCount, eHead.lpModuleName, eHead.lpApiName);
 	}
 
-
+	if (eHead.lpEWindow != 0 && eHead.dwEWindowSize > 4) {
+		ParseGUIResource(eHead.lpEWindow, eHead.dwEWindowSize);
+	}
 
 	return true;
 }

@@ -17,6 +17,7 @@ private slots:
 	void on_FuncDoubleClicked(QTableWidgetItem* pItem);
 	void on_ApiMenu(const QPoint&);
 	void on_MsgSelected();
+	void on_WindowSelected(int index);
 private:
 	Ui::MainWindow ui;
 	EAnalyEngine eAnalyEngine;

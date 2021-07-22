@@ -117,6 +117,13 @@ unsigned short ReadUShort(unsigned char* pBuf)
 	return *(unsigned short*)pBuf;
 }
 
+std::string ReadStr(unsigned char* pBuf)
+{
+	int Len = strlen((char*)pBuf);
+	std::string ret((const char*)pBuf, Len);
+	return ret;
+}
+
 unsigned char ReadUChar(unsigned char* pBuf)
 {
 	return *(unsigned char*)pBuf;

@@ -572,12 +572,13 @@ bool TrieTree::LoadSig(const char* lpMapPath)
 	}
 
 	DWORD dwSize = GetFileSize(hFile, 0);
-	char* pMapBuffer = (char*)malloc(dwSize);
+	char* pMapBuffer = (char*)BridgeAlloc(dwSize);
 
 	bool bRet = true;
 	do
 	{
-		if (!ReadFile(hFile, pMapBuffer, dwSize, 0, 0)) {
+		unsigned int recvLen = 0;
+		if (!ReadFile(hFile, pMapBuffer, dwSize, (LPDWORD)&recvLen, 0)) {
 			bRet = false;
 			break;
 		}
@@ -635,7 +636,7 @@ bool TrieTree::LoadSig(const char* lpMapPath)
 		}
 	} while (0);
 
-	free(pMapBuffer);
+	BridgeFree(pMapBuffer);
 	CloseHandle(hFile);
 	return bRet;
 }

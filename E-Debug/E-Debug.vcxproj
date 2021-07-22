@@ -24,6 +24,9 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|Win32'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <PlatformToolset>v142</PlatformToolset>
+    <UseOfMfc>Static</UseOfMfc>
+    <CharacterSet>NotSet</CharacterSet>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Condition="Exists('$(QtMsBuild)\qt_defaults.props')">
@@ -100,7 +103,7 @@
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <DebugInformationFormat>None</DebugInformationFormat>
       <Optimization>MaxSpeed</Optimization>
-      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -109,6 +112,8 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="EAnalyEngine.cpp" />
+    <ClCompile Include="EAppControl\EAppControl.cpp" />
+    <ClCompile Include="EAppControl\EAppControlFactory.cpp" />
     <ClCompile Include="MainWindow.cpp" />
     <ClCompile Include="plugin.cpp" />
     <ClCompile Include="pluginmain.cpp" />
@@ -119,6 +124,8 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="EAnalyEngine.h" />
+    <ClInclude Include="EAppControl\EAppControl.h" />
+    <ClInclude Include="EAppControl\EAppControlFactory.h" />
     <ClInclude Include="public.h" />
     <ClInclude Include="SectionManager.h" />
     <ClInclude Include="SymbolTable.h" />
