@@ -279,6 +279,7 @@ void EDebugEntry()
 
 	//debug版和release版本是不同的Qt环境
 #ifdef _DEBUG
+	int argc = 0;
 	QApplication app(argc, 0);
 	MainWindow* pWindow = new MainWindow(startAddr);
 	pWindow->show();

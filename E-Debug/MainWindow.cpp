@@ -227,6 +227,10 @@ bool MainWindow::InitWindow_EStatic()
 					Script::Label::Set(eLibInfo.vec_Funcs[nFuncIndex].addr, u16FuncName.c_str());
 				}
 				else {
+#ifdef _DEBUG
+					QString logMsg; logMsg.sprintf("%s	%08X", LocalCpToUtf8("识别函数失败").c_str(), eLibInfo.vec_Funcs[nFuncIndex].addr);
+					ui.outMsg->appendPlainText(logMsg);
+#endif // _DEBUG
 					//To do...模糊匹配
 				}
 			}

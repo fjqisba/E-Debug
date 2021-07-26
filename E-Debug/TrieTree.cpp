@@ -586,7 +586,6 @@ bool TrieTree::LoadSig(const char* lpMapPath)
 		std::string str_Map = pMapBuffer;
 		std::string SubFunc = GetMidString(str_Map, "*****SubFunc*****\r\n", "*****SubFunc_End*****", 0);
 
-
 		int pos = SubFunc.find("\r\n");     //子函数
 		while (pos != -1) {
 			std::string temp = SubFunc.substr(0, pos);  //单个子函数
