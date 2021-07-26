@@ -165,6 +165,8 @@ unsigned char icon[2348] = {
 //Initialize your plugin data here.
 bool pluginInit(PLUG_INITSTRUCT* initStruct)
 {
+	GuiAddLogMessage("[E-Debug] plugin 4.0 loaded,Author: fjqisba\n");
+	GuiAddLogMessage("[E-Debug] code: https://github.com/fjqisba/E-Debug\n");
     return true; //Return false to cancel loading the plugin.
 }
 
@@ -183,16 +185,16 @@ void pluginSetup()
 
 	
 	_plugin_menuseticon(hMenu, &menu_icon);
-	_plugin_menuaddentry(hMenu, PLUGIN_MENU_STARTDEBUG, LocalCpToUtf8("开始分析").c_str());
-	_plugin_menuaddentry(hMenu, PLUGIN_MENU_ABOUTME, LocalCpToUtf8("关于软件").c_str());
+	_plugin_menuaddentry(hMenu, PLUGIN_MENU_STARTDEBUG, StringUtils::LocalCpToUtf8("开始分析").c_str());
+	_plugin_menuaddentry(hMenu, PLUGIN_MENU_ABOUTME, StringUtils::LocalCpToUtf8("关于软件").c_str());
 
 	_plugin_menuseticon(hMenuDisasm,&menu_icon);
-	_plugin_menuaddentry(hMenuDisasm, PLUGIN_DISASM_HEXDATA, LocalCpToUtf8("取十六进制").c_str());
-	_plugin_menuaddentry(hMenuDisasm, PLUGIN_DISASM_BINDATA, LocalCpToUtf8("到字节集").c_str());
+	_plugin_menuaddentry(hMenuDisasm, PLUGIN_DISASM_HEXDATA, StringUtils::LocalCpToUtf8("取十六进制").c_str());
+	_plugin_menuaddentry(hMenuDisasm, PLUGIN_DISASM_BINDATA, StringUtils::LocalCpToUtf8("到字节集").c_str());
 
 	_plugin_menuseticon(hMenuDump, &menu_icon);
-	_plugin_menuaddentry(hMenuDump, PLUGIN_DUMP_HEXDATA, LocalCpToUtf8("取十六进制").c_str());
-	_plugin_menuaddentry(hMenuDump, PLUGIN_DUMP_BINDATA, LocalCpToUtf8("到字节集").c_str());
+	_plugin_menuaddentry(hMenuDump, PLUGIN_DUMP_HEXDATA, StringUtils::LocalCpToUtf8("取十六进制").c_str());
+	_plugin_menuaddentry(hMenuDump, PLUGIN_DUMP_BINDATA, StringUtils::LocalCpToUtf8("到字节集").c_str());
 }
 
 //到十六进制

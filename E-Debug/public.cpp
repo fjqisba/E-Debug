@@ -1,5 +1,6 @@
 #include "public.h"
 #include "pluginsdk/_scriptapi_memory.h"
+#include "pluginsdk/_scriptapi_label.h"
 
 unsigned char BinMap[256] = {
 		0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
@@ -129,7 +130,7 @@ unsigned char ReadUChar(unsigned char* pBuf)
 	return *(unsigned char*)pBuf;
 }
 
-std::wstring LocalCpToUtf16(const char* str)
+std::wstring StringUtils::LocalCpToUtf16(const char* str)
 {
 	std::wstring convertedString;
 	if (!str || !*str)
@@ -144,7 +145,7 @@ std::wstring LocalCpToUtf16(const char* str)
 	return convertedString;
 }
 
-std::string Utf16ToUtf8(const wchar_t* wstr)
+std::string StringUtils::Utf16ToUtf8(const wchar_t* wstr)
 {
 	std::string convertedString;
 	if (!wstr || !*wstr)
@@ -159,7 +160,45 @@ std::string Utf16ToUtf8(const wchar_t* wstr)
 	return convertedString;
 }
 
-std::string LocalCpToUtf8(const char* str)
+std::string StringUtils::LocalCpToUtf8(const char* str)
 {
 	return Utf16ToUtf8(LocalCpToUtf16(str).c_str());
+}
+
+std::string StringUtils::sprintf(_In_z_ _Printf_format_string_ const char* format, ...)
+{
+	va_list args;
+	va_start(args, format);
+	auto result = vsprintf(format, args);
+	va_end(args);
+	return result;
+}
+
+std::string StringUtils::vsprintf(_In_z_ _Printf_format_string_ const char* format, va_list args)
+{
+	char sbuffer[64] = "";
+	if (_vsnprintf_s(sbuffer, _TRUNCATE, format, args) != -1)
+		return sbuffer;
+
+	std::vector<char> buffer(256, '\0');
+	while (true)
+	{
+		int res = _vsnprintf_s(buffer.data(), buffer.size(), _TRUNCATE, format, args);
+		if (res == -1)
+		{
+			buffer.resize(buffer.size() * 2);
+			continue;
+		}
+		else
+			break;
+	}
+	return std::string(buffer.data());
+}
+
+void SetX64DbgLabel(duint addr, const char* text)
+{
+	char bufferLabel[256];
+	if (!Script::Label::Get(addr, bufferLabel)) {
+		Script::Label::Set(addr, text, true);
+	}
 }

@@ -36,7 +36,7 @@ bool SectionManager::InitSectionManager(unsigned int anyAddr, QPlainTextEdit* ou
 		tmpInfo.m_segName = moduleList[n].name;
 
 		QString logMsg;
-		logMsg.sprintf("->[%s]  %s:%08X,%s:%08X", LocalCpToUtf8("添加分析区段").c_str(), LocalCpToUtf8("地址").c_str(), tmpInfo.m_segStart, LocalCpToUtf8("大小").c_str(), tmpInfo.m_segSize);
+		logMsg.sprintf("->[%s]  %s:%08X,%s:%08X", StringUtils::LocalCpToUtf8("添加分析区段").c_str(), StringUtils::LocalCpToUtf8("地址").c_str(), tmpInfo.m_segStart, StringUtils::LocalCpToUtf8("大小").c_str(), tmpInfo.m_segSize);
 		outMsg->appendPlainText(logMsg);
 
 		tmpInfo.m_segData.resize(tmpInfo.m_segSize);

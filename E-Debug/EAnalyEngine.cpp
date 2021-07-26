@@ -5,6 +5,7 @@
 #include "pluginsdk/_scriptapi_comment.h"
 #include "pluginsdk/_scriptapi_label.h"
 #include "SymbolTable.h"
+#include ".\EAppControl\EAppControlFactory.h"
 #include "public.h"
 
 struct EStaticHead
@@ -96,19 +97,19 @@ void EAnalyEngine::ParseKrnlInterface(duint lpKrnlEntry)
 	lpKrnlEntry -= sizeof(mid_KrnlApp);
 	Script::Memory::Read(lpKrnlEntry, &m_KrnlApp, sizeof(mid_KrnlApp), 0);
 
-	Script::Label::Set(m_KrnlApp.krnl_MReportError, LocalCpToUtf8("错误回调").c_str());
-	Script::Label::Set(m_KrnlApp.krnl_MCallDllCmd, LocalCpToUtf8("DLL命令").c_str());
-	Script::Label::Set(m_KrnlApp.krnl_MCallLibCmd, LocalCpToUtf8("三方支持库命令").c_str());
-	Script::Label::Set(m_KrnlApp.krnl_MCallKrnlLibCmd, LocalCpToUtf8("核心支持库命令").c_str());
-	Script::Label::Set(m_KrnlApp.krnl_MReadProperty, LocalCpToUtf8("读取组件属性").c_str());
-	Script::Label::Set(m_KrnlApp.krnl_MWriteProperty, LocalCpToUtf8("设置组件属性").c_str());
-	Script::Label::Set(m_KrnlApp.krnl_MMalloc, LocalCpToUtf8("分配内存").c_str());
-	Script::Label::Set(m_KrnlApp.krnl_MRealloc, LocalCpToUtf8("重新分配内存").c_str());
-	Script::Label::Set(m_KrnlApp.krnl_MFree, LocalCpToUtf8("释放内存").c_str());
-	Script::Label::Set(m_KrnlApp.krnl_MExitProcess, LocalCpToUtf8("结束").c_str());
-	Script::Label::Set(m_KrnlApp.krnl_MMessageLoop, LocalCpToUtf8("窗口消息循环").c_str());
-	Script::Label::Set(m_KrnlApp.krnl_MLoadBeginWin, LocalCpToUtf8("载入启动窗口").c_str());
-	Script::Label::Set(m_KrnlApp.krnl_MOtherHelp, LocalCpToUtf8("辅助函数").c_str());
+	Script::Label::Set(m_KrnlApp.krnl_MReportError, StringUtils::LocalCpToUtf8("错误回调").c_str());
+	Script::Label::Set(m_KrnlApp.krnl_MCallDllCmd, StringUtils::LocalCpToUtf8("DLL命令").c_str());
+	Script::Label::Set(m_KrnlApp.krnl_MCallLibCmd, StringUtils::LocalCpToUtf8("三方支持库命令").c_str());
+	Script::Label::Set(m_KrnlApp.krnl_MCallKrnlLibCmd, StringUtils::LocalCpToUtf8("核心支持库命令").c_str());
+	Script::Label::Set(m_KrnlApp.krnl_MReadProperty, StringUtils::LocalCpToUtf8("读取组件属性").c_str());
+	Script::Label::Set(m_KrnlApp.krnl_MWriteProperty, StringUtils::LocalCpToUtf8("设置组件属性").c_str());
+	Script::Label::Set(m_KrnlApp.krnl_MMalloc, StringUtils::LocalCpToUtf8("分配内存").c_str());
+	Script::Label::Set(m_KrnlApp.krnl_MRealloc, StringUtils::LocalCpToUtf8("重新分配内存").c_str());
+	Script::Label::Set(m_KrnlApp.krnl_MFree, StringUtils::LocalCpToUtf8("释放内存").c_str());
+	Script::Label::Set(m_KrnlApp.krnl_MExitProcess, StringUtils::LocalCpToUtf8("结束").c_str());
+	Script::Label::Set(m_KrnlApp.krnl_MMessageLoop, StringUtils::LocalCpToUtf8("窗口消息循环").c_str());
+	Script::Label::Set(m_KrnlApp.krnl_MLoadBeginWin, StringUtils::LocalCpToUtf8("载入启动窗口").c_str());
+	Script::Label::Set(m_KrnlApp.krnl_MOtherHelp, StringUtils::LocalCpToUtf8("辅助函数").c_str());
 }
 
 bool EAnalyEngine::ParseLibInfomation(duint lpLibStartAddr, duint dwLibCount)
@@ -193,9 +194,9 @@ duint EAnalyEngine::GetUserCodeEndAddr()
 		codeEndAddr = codeEndAddr + ReadInt(LinearAddrToVirtualAddr(codeEndAddr + 1)) + 5;
 
 		QString outMsg;
-		outMsg.sprintf("->%s: %08X",LocalCpToUtf8("易语言程序入口").c_str(), codeEndAddr);
+		outMsg.sprintf("->%s: %08X", StringUtils::LocalCpToUtf8("易语言程序入口").c_str(), codeEndAddr);
 		m_outMsg->appendPlainText(outMsg);
-		Script::Comment::Set(codeEndAddr,LocalCpToUtf8("易语言程序入口").c_str());
+		Script::Comment::Set(codeEndAddr, StringUtils::LocalCpToUtf8("易语言程序入口").c_str());
 		return codeEndAddr;
 	}
 
@@ -212,6 +213,8 @@ duint EAnalyEngine::GetUserCodeEndAddr()
 
 	return mVec_segInfo[0].m_segStart + mVec_segInfo[0].m_segSize - 1;
 }
+
+
 
 std::string EAnalyEngine::GetControlTypeName(duint typeId)
 {
@@ -385,6 +388,7 @@ bool EAnalyEngine::ParseGUIResource(duint lpGUIStart, duint infoSize)
 				if (dwControlTypeId == 0x10001) {
 					lpControlInfo += strlen((char*)lpControlInfo)+1;
 					ParseControlBasciProperty(lpControlInfo, eControlInfo);
+					eControlInfo.controlName = StringUtils::sprintf("窗口0x%08X", eGuiInfo.windowId);
 				}
 				else if (krnln_IsMenuItemID(vec_ControlId[nIndexControl])) {
 					lpControlInfo += 14;
@@ -399,6 +403,7 @@ bool EAnalyEngine::ParseGUIResource(duint lpGUIStart, duint infoSize)
 				eControlInfo.controlId = vec_ControlId[nIndexControl];
 				eControlInfo.controlTypeId = dwControlTypeId;
 				eControlInfo.controlTypeName = GetControlTypeName(dwControlTypeId);
+				eControlInfo.controlType = EAppControlFactory::GetControlType(eControlInfo.controlTypeName);
 				eGuiInfo.vec_ControlInfo.push_back(eControlInfo);
 			}
 		}

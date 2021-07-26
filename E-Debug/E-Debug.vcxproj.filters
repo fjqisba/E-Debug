@@ -48,6 +48,69 @@
     <ClCompile Include="EAppControl\EAppControl.cpp">
       <Filter>Header Files\EAppControl</Filter>
     </ClCompile>
+    <ClCompile Include="EAppControl\krnl_CheckBox.cpp">
+      <Filter>Header Files\EAppControl</Filter>
+    </ClCompile>
+    <ClCompile Include="EAppControl\krnl_ChkListBox.cpp">
+      <Filter>Header Files\EAppControl</Filter>
+    </ClCompile>
+    <ClCompile Include="EAppControl\krnl_ComboBox.cpp">
+      <Filter>Header Files\EAppControl</Filter>
+    </ClCompile>
+    <ClCompile Include="EAppControl\krnl_DrawPanel.cpp">
+      <Filter>Header Files\EAppControl</Filter>
+    </ClCompile>
+    <ClCompile Include="EAppControl\krnl_DropTarget.cpp">
+      <Filter>Header Files\EAppControl</Filter>
+    </ClCompile>
+    <ClCompile Include="EAppControl\krnl_EditBox.cpp">
+      <Filter>Header Files\EAppControl</Filter>
+    </ClCompile>
+    <ClCompile Include="EAppControl\krnl_GroupBox.cpp">
+      <Filter>Header Files\EAppControl</Filter>
+    </ClCompile>
+    <ClCompile Include="EAppControl\krnl_HScrollBar.cpp">
+      <Filter>Header Files\EAppControl</Filter>
+    </ClCompile>
+    <ClCompile Include="EAppControl\krnl_Label.cpp">
+      <Filter>Header Files\EAppControl</Filter>
+    </ClCompile>
+    <ClCompile Include="EAppControl\krnl_ListBox.cpp">
+      <Filter>Header Files\EAppControl</Filter>
+    </ClCompile>
+    <ClCompile Include="EAppControl\krnl_PicBox.cpp">
+      <Filter>Header Files\EAppControl</Filter>
+    </ClCompile>
+    <ClCompile Include="EAppControl\krnl_ProcessBar.cpp">
+      <Filter>Header Files\EAppControl</Filter>
+    </ClCompile>
+    <ClCompile Include="EAppControl\krnl_RadioBox.cpp">
+      <Filter>Header Files\EAppControl</Filter>
+    </ClCompile>
+    <ClCompile Include="EAppControl\krnl_ShapeBox.cpp">
+      <Filter>Header Files\EAppControl</Filter>
+    </ClCompile>
+    <ClCompile Include="EAppControl\krnl_SliderBar.cpp">
+      <Filter>Header Files\EAppControl</Filter>
+    </ClCompile>
+    <ClCompile Include="EAppControl\krnl_Tab.cpp">
+      <Filter>Header Files\EAppControl</Filter>
+    </ClCompile>
+    <ClCompile Include="EAppControl\krnl_Timer.cpp">
+      <Filter>Header Files\EAppControl</Filter>
+    </ClCompile>
+    <ClCompile Include="EAppControl\krnl_VScrollBar.cpp">
+      <Filter>Header Files\EAppControl</Filter>
+    </ClCompile>
+    <ClCompile Include="EAppControl\krnl_window.cpp">
+      <Filter>Header Files\EAppControl</Filter>
+    </ClCompile>
+    <ClCompile Include="EAppControl\krnl_AnimateBox.cpp">
+      <Filter>Header Files\EAppControl</Filter>
+    </ClCompile>
+    <ClCompile Include="EAppControl\krnl_Button.cpp">
+      <Filter>Header Files\EAppControl</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pluginmain.h">
@@ -75,6 +138,69 @@
       <Filter>Header Files\EAppControl</Filter>
     </ClInclude>
     <ClInclude Include="EAppControl\EAppControl.h">
+      <Filter>Header Files\EAppControl</Filter>
+    </ClInclude>
+    <ClInclude Include="EAppControl\krnl_Button.h">
+      <Filter>Header Files\EAppControl</Filter>
+    </ClInclude>
+    <ClInclude Include="EAppControl\krnl_CheckBox.h">
+      <Filter>Header Files\EAppControl</Filter>
+    </ClInclude>
+    <ClInclude Include="EAppControl\krnl_ChkListBox.h">
+      <Filter>Header Files\EAppControl</Filter>
+    </ClInclude>
+    <ClInclude Include="EAppControl\krnl_ComboBox.h">
+      <Filter>Header Files\EAppControl</Filter>
+    </ClInclude>
+    <ClInclude Include="EAppControl\krnl_DrawPanel.h">
+      <Filter>Header Files\EAppControl</Filter>
+    </ClInclude>
+    <ClInclude Include="EAppControl\krnl_DropTarget.h">
+      <Filter>Header Files\EAppControl</Filter>
+    </ClInclude>
+    <ClInclude Include="EAppControl\krnl_EditBox.h">
+      <Filter>Header Files\EAppControl</Filter>
+    </ClInclude>
+    <ClInclude Include="EAppControl\krnl_GroupBox.h">
+      <Filter>Header Files\EAppControl</Filter>
+    </ClInclude>
+    <ClInclude Include="EAppControl\krnl_HScrollBar.h">
+      <Filter>Header Files\EAppControl</Filter>
+    </ClInclude>
+    <ClInclude Include="EAppControl\krnl_Label.h">
+      <Filter>Header Files\EAppControl</Filter>
+    </ClInclude>
+    <ClInclude Include="EAppControl\krnl_ListBox.h">
+      <Filter>Header Files\EAppControl</Filter>
+    </ClInclude>
+    <ClInclude Include="EAppControl\krnl_PicBox.h">
+      <Filter>Header Files\EAppControl</Filter>
+    </ClInclude>
+    <ClInclude Include="EAppControl\krnl_ProcessBar.h">
+      <Filter>Header Files\EAppControl</Filter>
+    </ClInclude>
+    <ClInclude Include="EAppControl\krnl_RadioBox.h">
+      <Filter>Header Files\EAppControl</Filter>
+    </ClInclude>
+    <ClInclude Include="EAppControl\krnl_ShapeBox.h">
+      <Filter>Header Files\EAppControl</Filter>
+    </ClInclude>
+    <ClInclude Include="EAppControl\krnl_SliderBar.h">
+      <Filter>Header Files\EAppControl</Filter>
+    </ClInclude>
+    <ClInclude Include="EAppControl\krnl_Tab.h">
+      <Filter>Header Files\EAppControl</Filter>
+    </ClInclude>
+    <ClInclude Include="EAppControl\krnl_Timer.h">
+      <Filter>Header Files\EAppControl</Filter>
+    </ClInclude>
+    <ClInclude Include="EAppControl\krnl_VScrollBar.h">
+      <Filter>Header Files\EAppControl</Filter>
+    </ClInclude>
+    <ClInclude Include="EAppControl\krnl_window.h">
+      <Filter>Header Files\EAppControl</Filter>
+    </ClInclude>
+    <ClInclude Include="EAppControl\krnl_AnimateBox.h">
       <Filter>Header Files\EAppControl</Filter>
     </ClInclude>
   </ItemGroup>

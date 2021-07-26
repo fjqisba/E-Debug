@@ -9,6 +9,8 @@
 #include "pluginsdk/_scriptapi_comment.h"
 #include "pluginsdk/_scriptapi_memory.h"
 #include "TrieTree.h"
+#include ".\EAppControl\EAppControlFactory.h"
+#include ".\EAppControl\EAppControl.h"
 #include "public.h"
 
 MainWindow::MainWindow(unsigned int dwBase, QWidget* parent) : QWidget(parent)
@@ -147,7 +149,7 @@ void MainWindow::on_ApiMenu(const QPoint& point)
 			callAddr = ReadUInt(eAnalyEngine.LinearAddrToVirtualAddr(callAddr));
 			if (callAddr == eAnalyEngine.m_KrnlApp.krnl_MCallDllCmd) {
 				QString outMsg;
-				outMsg.sprintf("%08X    mov eax,%08X     %s", scanStartAddr, apiIndex, LocalCpToUtf8(eAnalyEngine.mVec_ImportsApi[apiIndex].ApiName.c_str()).c_str());
+				outMsg.sprintf("%08X    mov eax,%08X     %s", scanStartAddr, apiIndex, StringUtils::LocalCpToUtf8(eAnalyEngine.mVec_ImportsApi[apiIndex].ApiName.c_str()).c_str());
 				ui.outMsg->appendPlainText(outMsg);
 			}
 		} while (true);
@@ -174,7 +176,7 @@ void MainWindow::on_LibNameSelected(const QString& currentText)
 	for (unsigned int nLibIndex = 0; nLibIndex < eAnalyEngine.mVec_LibInfo.size(); ++nLibIndex) {
 		ElibInfo& eLibInfo = eAnalyEngine.mVec_LibInfo[nLibIndex];
 
-		std::string uLibName = LocalCpToUtf8(eLibInfo.libName.c_str());
+		std::string uLibName = StringUtils::LocalCpToUtf8(eLibInfo.libName.c_str());
 		int index = currentText.indexOf(uLibName.c_str());
 		if (index == -1) {
 			continue;
@@ -207,6 +209,7 @@ void MainWindow::on_LibNameSelected(const QString& currentText)
 
 bool MainWindow::InitWindow_EStatic()
 {
+	//Script::Label::Set("0x401000", "QQQ", true);
 	//ui.outMsg->appendPlainText(QStringLiteral("->开始识别易语言支持库函数..."));
 
 	ui.tabWidget->addTab(ui.tab_Func, QStringLiteral("函数识别"));
@@ -223,14 +226,14 @@ bool MainWindow::InitWindow_EStatic()
 				char* pFuncName = esigTree.MatchFunc(eAnalyEngine.LinearAddrToVirtualAddr(eLibInfo.vec_Funcs[nFuncIndex].addr));
 				if (pFuncName) {
 					eLibInfo.vec_Funcs[nFuncIndex].name = pFuncName;
-					std::string u16FuncName = LocalCpToUtf8(pFuncName);
-					Script::Label::Set(eLibInfo.vec_Funcs[nFuncIndex].addr, u16FuncName.c_str());
+					std::string u16FuncName = StringUtils::LocalCpToUtf8(pFuncName);
+					SetX64DbgLabel(eLibInfo.vec_Funcs[nFuncIndex].addr, u16FuncName.c_str());
 				}
 				else {
 #ifdef _DEBUG
-					QString logMsg; logMsg.sprintf("%s	%08X", LocalCpToUtf8("识别函数失败").c_str(), eLibInfo.vec_Funcs[nFuncIndex].addr);
+					QString logMsg; logMsg.sprintf("%s	%08X", StringUtils::LocalCpToUtf8("识别函数失败").c_str(), eLibInfo.vec_Funcs[nFuncIndex].addr);
 					ui.outMsg->appendPlainText(logMsg);
-#endif // _DEBUG
+#endif
 					//To do...模糊匹配
 				}
 			}
@@ -282,7 +285,7 @@ bool MainWindow::InitWindow_EStatic()
 			callAddr = ReadUInt(eAnalyEngine.LinearAddrToVirtualAddr(callAddr));
 			if (callAddr == eAnalyEngine.m_KrnlApp.krnl_MCallDllCmd) {
 				int index = ReadUInt(eAnalyEngine.LinearAddrToVirtualAddr(scanStartAddr + 1));
-				Script::Comment::Set(scanStartAddr, LocalCpToUtf8(eAnalyEngine.mVec_ImportsApi[index].ApiName.c_str()).c_str());
+				Script::Comment::Set(scanStartAddr, StringUtils::LocalCpToUtf8(eAnalyEngine.mVec_ImportsApi[index].ApiName.c_str()).c_str());
 				eAnalyEngine.mVec_ImportsApi[index].refCount++;
 			}
 		} while (true);
@@ -317,7 +320,6 @@ bool MainWindow::InitWindow_EStatic()
 		}
 	}
 
-
 	//开始生成窗口控件信息
 	if (eAnalyEngine.mVec_GuiInfo.size()) {
 		ui.tabWidget->addTab(ui.tab_Control, QStringLiteral("窗口控件"));
@@ -331,17 +333,23 @@ bool MainWindow::InitWindow_EStatic()
 		for (unsigned int nIndexWindow = 0; nIndexWindow < eAnalyEngine.mVec_GuiInfo.size(); ++nIndexWindow) {
 			mid_GuiInfo& eGuiInfo = eAnalyEngine.mVec_GuiInfo[nIndexWindow];
 			QString windowName;
-			windowName.sprintf("%s_0x%08X(%d)", LocalCpToUtf8("窗口").c_str(), eGuiInfo.windowId, eGuiInfo.vec_ControlInfo.size());
+			windowName.sprintf("%s_0x%08X(%d)", StringUtils::LocalCpToUtf8("窗口").c_str(), eGuiInfo.windowId, eGuiInfo.vec_ControlInfo.size());
 			ui.combo_Window->addItem(windowName);
 			for (unsigned int nIndexControl = 0; nIndexControl < eGuiInfo.vec_ControlInfo.size(); ++nIndexControl) {
 				mid_ControlInfo& eControlInfo = eGuiInfo.vec_ControlInfo[nIndexControl];
-				for (unsigned int nIndexEvent = 0; nIndexEvent < eControlInfo.vec_eventInfo.size(); ++nIndexEvent) {
-					
+				EAppControl* pControlClass = EAppControlFactory::GetEAppControl(eControlInfo.controlType);
+				if (pControlClass) {
+					for (unsigned int nIndexEvent = 0; nIndexEvent < eControlInfo.vec_eventInfo.size(); ++nIndexEvent) {
+						std::string strEventName;
+						strEventName = "_" + eControlInfo.controlName + "_" + pControlClass->取事件名称(eControlInfo.vec_eventInfo[nIndexEvent].nEventIndex);
+						SetX64DbgLabel(eControlInfo.vec_eventInfo[nIndexEvent].eventAddr, StringUtils::LocalCpToUtf8(strEventName.c_str()).c_str());
+					}
 				}
 			}
 		}
 		on_WindowSelected(0);
 	}
+	
 	
 	return true;
 }
