@@ -190,6 +190,7 @@ public:
 	duint m_UserCodeStartAddr = 0;
 	//用户代码结束地址
 	duint m_UserCodeEndAddr = 0;
+	//代码段基址
 
 	mid_KrnlApp m_KrnlApp;
 public:

@@ -11,7 +11,7 @@ public:
 	~MainWindow();
 public:
 	//准备易语言静态编译程序窗口
-	bool InitWindow_EStatic();
+	bool InitWindow_EStatic(duint codeAddr);
 private slots:
 	void on_LibNameSelected(const QString& currentText);
 	void on_FuncDoubleClicked(QTableWidgetItem* pItem);

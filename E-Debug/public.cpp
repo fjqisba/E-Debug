@@ -197,8 +197,8 @@ std::string StringUtils::vsprintf(_In_z_ _Printf_format_string_ const char* form
 
 void SetX64DbgLabel(duint addr, const char* text)
 {
-	char bufferLabel[256];
-	if (!Script::Label::Get(addr, bufferLabel)) {
+	Script::Label::LabelInfo info = {};
+	if (!Script::Label::GetInfo(addr, &info) || !info.manual) {
 		Script::Label::Set(addr, text, true);
 	}
 }

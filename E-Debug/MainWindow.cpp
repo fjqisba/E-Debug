@@ -8,6 +8,8 @@
 #include "pluginsdk/_scriptapi_pattern.h"
 #include "pluginsdk/_scriptapi_comment.h"
 #include "pluginsdk/_scriptapi_memory.h"
+#include "pluginsdk/_scriptapi_function.h"
+#include "pluginsdk/_scriptapi_module.h"
 #include "TrieTree.h"
 #include ".\EAppControl\EAppControlFactory.h"
 #include ".\EAppControl\EAppControl.h"
@@ -49,7 +51,7 @@ MainWindow::MainWindow(unsigned int dwBase, QWidget* parent) : QWidget(parent)
 
 	//静态编译程序
 	if (eAnalyEngine.m_AnalysisMode == 1) {
-		InitWindow_EStatic();
+		InitWindow_EStatic(dwBase);
 		return;
 	}
 }
@@ -207,9 +209,11 @@ void MainWindow::on_LibNameSelected(const QString& currentText)
 	}
 }
 
-bool MainWindow::InitWindow_EStatic()
+bool MainWindow::InitWindow_EStatic(duint codeAddr)
 {
-	//Script::Label::Set("0x401000", "QQQ", true);
+	//控制流分析
+	DbgCmdExecDirect("cfanalyze");
+
 	//ui.outMsg->appendPlainText(QStringLiteral("->开始识别易语言支持库函数..."));
 
 	ui.tabWidget->addTab(ui.tab_Func, QStringLiteral("函数识别"));
@@ -259,7 +263,26 @@ bool MainWindow::InitWindow_EStatic()
 		ui.list_LibInfo->insertItem(ui.list_LibInfo->count(), new QListWidgetItem(QStringLiteral("——————————————————————————————")));
 	}
 
-	
+	//基础命令识别
+	std::string basicLibPath = GetCurrentDirA() + "\\plugins\\esig\\易语言基础命令.esig";
+	TrieTree basicEsigTree(&eAnalyEngine);
+	if (basicEsigTree.LoadSig(basicLibPath.c_str())) {
+		BridgeList<Script::Function::FunctionInfo> vec_Funcs;
+		Script::Function::GetList(&vec_Funcs);
+		duint codeBaseAddr = Script::Module::BaseFromAddr(codeAddr);
+		for (unsigned int n = 0; n < vec_Funcs.Count(); ++n) {
+			duint funcAddr = codeBaseAddr + vec_Funcs[n].rvaStart;
+			char* pFuncName = basicEsigTree.MatchFunc(eAnalyEngine.LinearAddrToVirtualAddr(funcAddr));
+			if (pFuncName) {
+				SetX64DbgLabel(funcAddr, StringUtils::LocalCpToUtf8(pFuncName).c_str());
+			}
+		}
+	}
+	else {
+		QString logMsg = QStringLiteral("->加载易语言基础命令特征文件失败");
+		ui.outMsg->appendPlainText(logMsg);
+	}
+
 
 	//开始生成DLL命令表
 	if (eAnalyEngine.mVec_ImportsApi.size()) {

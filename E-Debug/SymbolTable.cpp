@@ -12,10 +12,11 @@ void SymbolTable::InitSymbolTable()
 	BridgeList<Script::Symbol::SymbolInfo> symbolList;
 	Script::Symbol::GetList(&symbolList);
 
-	unsigned int baseStart = Script::Module::GetMainModuleBase();
 	for (unsigned int n = 0; n < symbolList.Count(); ++n) {
-		g_SymbolMap[baseStart + symbolList[n].rva] = symbolList[n].name;
+		duint modBase = DbgModBaseFromName(symbolList[n].mod);
+		g_SymbolMap[modBase + symbolList[n].rva] = symbolList[n].name;
 	}
+	return;
 }
 
 std::string SymbolTable::FindSymbolName(unsigned int addr)
