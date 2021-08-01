@@ -221,24 +221,33 @@ bool MainWindow::InitWindow_EStatic(duint codeAddr)
 	for (unsigned int nLibIndex = 0; nLibIndex < eAnalyEngine.mVec_LibInfo.size(); ++nLibIndex) {
 
 		ElibInfo& eLibInfo = eAnalyEngine.mVec_LibInfo[nLibIndex];
-		std::string libPath = GetCurrentDirA() + "\\plugins\\esig\\" + eLibInfo.libName + ".esig";
+		std::string libPath = GetApplicationDirA() + "\\plugins\\esig\\" + eLibInfo.libName + ".esig";
 
 		//函数识别
 		TrieTree esigTree(&eAnalyEngine);
 		if (esigTree.LoadSig(libPath.c_str())) {
 			for (unsigned int nFuncIndex = 0; nFuncIndex < eLibInfo.vec_Funcs.size(); ++nFuncIndex) {
-				char* pFuncName = esigTree.MatchFunc(eAnalyEngine.LinearAddrToVirtualAddr(eLibInfo.vec_Funcs[nFuncIndex].addr));
+				double score = 0;
+				const char* pFuncName = esigTree.MatchFunc(eAnalyEngine.LinearAddrToVirtualAddr(eLibInfo.vec_Funcs[nFuncIndex].addr));
 				if (pFuncName) {
 					eLibInfo.vec_Funcs[nFuncIndex].name = pFuncName;
 					std::string u16FuncName = StringUtils::LocalCpToUtf8(pFuncName);
 					SetX64DbgLabel(eLibInfo.vec_Funcs[nFuncIndex].addr, u16FuncName.c_str());
+				}
+				else if ((pFuncName = esigTree.MatchFunc_Fuzzy(eAnalyEngine.LinearAddrToVirtualAddr(eLibInfo.vec_Funcs[nFuncIndex].addr), score))) {
+					eLibInfo.vec_Funcs[nFuncIndex].name = std::string(pFuncName) + "_模糊";
+					std::string u16FuncName = StringUtils::LocalCpToUtf8(eLibInfo.vec_Funcs[nFuncIndex].name.c_str());
+					SetX64DbgLabel(eLibInfo.vec_Funcs[nFuncIndex].addr, u16FuncName.c_str());
+#ifdef _DEBUG
+					QString logMsg; logMsg.sprintf("%s	%08X:%lf", StringUtils::LocalCpToUtf8("模糊匹配成功").c_str(), eLibInfo.vec_Funcs[nFuncIndex].addr,score);
+					ui.outMsg->appendPlainText(logMsg);
+#endif	
 				}
 				else {
 #ifdef _DEBUG
 					QString logMsg; logMsg.sprintf("%s	%08X", StringUtils::LocalCpToUtf8("识别函数失败").c_str(), eLibInfo.vec_Funcs[nFuncIndex].addr);
 					ui.outMsg->appendPlainText(logMsg);
 #endif
-					//To do...模糊匹配
 				}
 			}
 		}
@@ -264,7 +273,7 @@ bool MainWindow::InitWindow_EStatic(duint codeAddr)
 	}
 
 	//基础命令识别
-	std::string basicLibPath = GetCurrentDirA() + "\\plugins\\esig\\易语言基础命令.esig";
+	std::string basicLibPath = GetApplicationDirA() + "\\plugins\\esig\\易语言基础命令.esig";
 	TrieTree basicEsigTree(&eAnalyEngine);
 	if (basicEsigTree.LoadSig(basicLibPath.c_str())) {
 		BridgeList<Script::Function::FunctionInfo> vec_Funcs;

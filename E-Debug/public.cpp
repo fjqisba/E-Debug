@@ -90,6 +90,19 @@ std::string GetCurrentDirA()
 	return buffer;
 }
 
+std::string GetApplicationDirA()
+{
+	std::string str_Buffer;
+	char buffer[MAX_PATH] = { 0 };
+	GetModuleFileNameA(NULL, buffer, MAX_PATH);
+	str_Buffer = buffer;
+	int nStart = str_Buffer.rfind("\\");
+	if (nStart == std::string::npos) {
+		return "";
+	}
+	return str_Buffer.substr(0, nStart);
+}
+
 std::wstring GetCurrentDirW()
 {
 	wchar_t buffer[MAX_PATH] = { 0 };

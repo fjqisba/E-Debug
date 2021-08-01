@@ -2,6 +2,7 @@
 #include "MainWindow.h"
 #include <QApplication>
 #include <QClipboard>
+#include <QDesktopWidget>
 #include "public.h"
 #include "pluginsdk/bridgemain.h"
 #include "pluginsdk/_scriptapi_gui.h"
@@ -289,6 +290,8 @@ void EDebugEntry()
 	return;
 #else
 	MainWindow* pWindow = new MainWindow(startAddr);
+	QDesktopWidget* desktop = QApplication::desktop();
+	pWindow->move((desktop->width() - pWindow->width()) / 2, (desktop->height() - pWindow->height()) / 2);
 	pWindow->show();
 #endif
 	return;

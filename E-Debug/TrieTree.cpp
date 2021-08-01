@@ -2,6 +2,8 @@
 #include <stack>
 #include "SectionManager.h"
 #include "SymbolTable.h"
+#include <math.h>
+#include <QDebug>
 #include "public.h"
 
 std::string GetMidString(std::string& src, const char* left, const char* right, int offset) {
@@ -44,6 +46,21 @@ bool FastMatch_CmpApi(unsigned char* pSrc, std::string IATEAT)
 	std::string funcName = SymbolTable::FindSymbolName(oaddr);
 
 	if ((funcName == EATCom) || (funcName == IATCom)) {
+		return true;
+	}
+	return false;
+}
+
+bool TrieTree::SimilarMatch_CmpCall(unsigned char* pSrc, std::string FuncName, double& out_RightLen, double& out_TotalLen)
+{
+	if (*pSrc != 0xE8) {
+		return false;
+	}
+	unsigned int oaddr = m_SectionManager->VirtualAddrToLinearAddr(pSrc + ReadInt(pSrc + 1) + 5);
+	if (m_RFunc[oaddr] == FuncName) {
+		return true;
+	}
+	if (SimilarMatch(m_SectionManager->LinearAddrToVirtualAddr(oaddr), m_subFunc[FuncName], out_RightLen, out_TotalLen) == 100) {
 		return true;
 	}
 	return false;
@@ -408,6 +425,154 @@ bool TrieTree::FastMatch(TrieTreeNode* p, unsigned char*& FuncSrc)
 }
 
 
+int TrieTree::SimilarMatch(unsigned char* FuncSrc, std::string& FuncTxt, double& out_RightLen, double& out_TotalLen)
+{
+	unsigned char* pSrc = FuncSrc;  //初始化函数代码指针
+	if (FuncTxt.empty() || !FuncSrc)
+	{
+		return 0;
+	}
+
+	unsigned int MaxLength = FuncTxt.length();
+	unsigned int n = 0;
+
+	while (n < MaxLength) {
+		switch (FuncTxt[n]) {
+		case '-':
+		{
+			out_TotalLen += 5;
+			if (FuncTxt[n + 1] == '-' && FuncTxt[n + 2] == '>') {		//长跳转
+				if (*pSrc != 0xE9) {
+					out_RightLen = 0;
+					goto label_end;
+				}
+				unsigned int oaddr = m_SectionManager->VirtualAddrToLinearAddr(pSrc + ReadInt(pSrc + 1) + 5);
+				pSrc = m_SectionManager->LinearAddrToVirtualAddr(oaddr);
+				if (!pSrc) {
+					goto label_end;
+				}
+				n = n + 3;
+				out_RightLen += 5;
+				continue;
+			}
+			goto label_end;
+		}
+		case '<':
+		{
+			out_TotalLen += 6;
+			if (FuncTxt[n + 1] == '[') {						//CALLAPI
+				int post = FuncTxt.find("]>", n);
+				if (post == -1) {
+					goto label_end;
+				}
+				if (SlowMatch_CmpCallApi(pSrc, FuncTxt.substr(n + 2, post - n - 2))) {
+					out_RightLen += 6;
+				}
+				pSrc = pSrc + 6;
+				n = post + 2;
+				continue;
+			}
+			else {
+				out_TotalLen += 5;
+				int post = FuncTxt.find('>', n);
+				if (post == -1) {
+					goto label_end;
+				}
+				double callRightLen = 0;
+				double callTotalLen = 0;
+				if (SimilarMatch_CmpCall(pSrc, FuncTxt.substr(n + 1, post - n - 1), callRightLen, callTotalLen)) {
+					out_RightLen += 5;
+					out_RightLen += callRightLen;
+					out_TotalLen += callTotalLen;
+				}
+				pSrc = pSrc + 5;
+				n = post + 1;
+				continue;
+			}
+		}
+		case '[':
+		{
+			out_TotalLen += 6;
+			int post = FuncTxt.find(']', n);
+			if (post == -1) {
+				goto label_end;
+			}
+			if (SlowMatch_CmpCallApi(pSrc, FuncTxt.substr(n + 1, post - n - 1))) {
+				out_RightLen += 6;
+			}
+			pSrc = pSrc + 6;
+			n = post + 1;
+			continue;
+		}
+		case '!':
+		{
+			out_TotalLen += 4;
+			int post = FuncTxt.find('!', n + 1);
+			if (post == -1) {
+				goto label_end;
+			}
+			std::string constantName = FuncTxt.substr(n + 1, post - n - 1);
+			unsigned int oaddr = ReadUInt(pSrc);
+			if (m_RFunc[oaddr] != constantName) {
+				double dwRightLen = 0;
+				double dwTotalLen = 0;
+				SimilarMatch(m_SectionManager->LinearAddrToVirtualAddr(oaddr), m_subFunc[constantName], dwRightLen, dwTotalLen);
+			}
+			out_RightLen += 4;
+			pSrc = pSrc + 4;
+			n = post + 1;
+			continue;
+		}
+		case '?':
+		{
+			if (FuncTxt[n + 1] == '?') {	                                  //全通配符
+				out_TotalLen += 0.25;
+				out_RightLen += 0.25;
+			}
+			else if ((ReadUChar(pSrc) & 0xF) == HexToBin(FuncTxt[n + 1])) {   //左通配符
+				out_TotalLen += 0.5;
+				out_RightLen += 0.5;
+			}
+			else {
+				out_TotalLen += 1;
+			}
+			pSrc = pSrc + 1;
+			n = n + 2;
+			continue;
+		}
+		default:
+		{
+			if (FuncTxt[n + 1] == '?') {                                      //右通配符
+				if ((ReadUChar(pSrc) >> 4) == HexToBin(FuncTxt[n])) {
+					out_RightLen += 0.5;
+					out_TotalLen += 0.5;
+				}
+				else {
+					out_TotalLen += 1;
+				}
+			}
+			else {
+				out_TotalLen += 1;
+				unsigned char ByteCode;
+				HexToBin(FuncTxt.substr(n, 2), &ByteCode);
+				if (*pSrc == ByteCode) {
+					out_RightLen += 1;
+				}
+			}
+			pSrc = pSrc + 1;
+			n = n + 2;
+			continue;
+		}
+		}
+	}
+
+label_end:
+	if (out_TotalLen) {
+		return (out_RightLen * 100) / out_TotalLen;
+	}
+	return 0;
+}
+
 bool TrieTree::SlowMatch(unsigned char* FuncSrc, std::string& FuncTxt)
 {
 	unsigned char* pSrc = FuncSrc;  //初始化函数代码指针
@@ -527,6 +692,48 @@ bool TrieTree::SlowMatch(unsigned char* FuncSrc, std::string& FuncTxt)
 	return true;
 }
 
+const char* TrieTree::MatchFunc_Fuzzy(unsigned char* CodeSrc, double& out_score)
+{
+	unsigned int retIndex = 0;
+	for (unsigned int n = 0; n < mVec_MainFunc.size(); ++n) {
+		double dwRightLen = 0;
+		double dwTotalLen = 0;
+		if (!SimilarMatch(CodeSrc, mVec_MainFunc[n].second, dwRightLen, dwTotalLen)) {
+			continue;
+		}
+
+		//计算出基础分数
+		double Similarity = (dwRightLen * 100 / dwTotalLen);
+		double WeightValue= std::sqrt((16 + dwRightLen) / 32);
+		//进行匹配字节加权
+		Similarity = Similarity * WeightValue;
+
+		//40分是及格分数
+		if (Similarity < 40) {
+			continue;
+		}
+		if (Similarity > out_score) {
+			out_score = Similarity;
+			retIndex = n;
+		}
+#ifdef _DEBUG
+		if (m_SectionManager->VirtualAddrToLinearAddr(CodeSrc) == 0x0048F430) {
+			if (mVec_MainFunc[n].first == "处理事件") {
+				int a = 0;
+			}
+			qDebug() << QString::fromLocal8Bit(mVec_MainFunc[n].first.c_str()) << "(" << dwRightLen << "/" << dwTotalLen << "):" << Similarity;
+		}
+#endif
+	}
+
+	if (out_score) {
+		//禁止重复模糊匹配
+		mVec_MainFunc[retIndex].second.clear();
+		return mVec_MainFunc[retIndex].first.c_str();
+	}
+	return NULL;
+}
+
 char* TrieTree::MatchFunc(unsigned char* FuncSrc)
 {
 	TrieTreeNode* p = root;		                //当前指针指向root
@@ -630,6 +837,7 @@ bool TrieTree::LoadSig(const char* lpMapPath)
 			if (!Insert(temp.substr(tempos + 1), temp.substr(0, tempos))) {
 				//"插入函数失败\r\n");
 			}
+			mVec_MainFunc.push_back(std::pair<std::string, std::string>(temp.substr(0, tempos), temp.substr(tempos + 1)));
 			Func = Func.substr(pos + 2);
 			pos = Func.find("\r\n");
 		}
@@ -642,6 +850,7 @@ bool TrieTree::LoadSig(const char* lpMapPath)
 
 void TrieTree::Log_PrintSubFunc()
 {
+	
 	//std::map<qstring, qstring>::iterator it;
 	//for (it = m_subFunc.begin(); it != m_subFunc.end(); it++)
 	//{

@@ -11,6 +11,7 @@ std::string get_shortstring(dsint addr);
 std::string GetCurrentDirA();
 std::wstring GetCurrentDirW();
 
+std::string GetApplicationDirA();
 
 //Ê®Áùµ½Ê®
 unsigned char HexToBin(unsigned char HexCode);
