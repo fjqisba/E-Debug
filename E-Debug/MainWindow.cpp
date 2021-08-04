@@ -147,6 +147,9 @@ void MainWindow::on_ApiMenu(const QPoint& point)
 				break;
 			}
 			unsigned int callAddr = eAnalyEngine.ReadCallAddr(scanStartAddr + 5);
+			if (ReadUShort(eAnalyEngine.LinearAddrToVirtualAddr(callAddr)) != 0x25FF) {
+				continue;
+			}
 			callAddr = ReadUInt(eAnalyEngine.LinearAddrToVirtualAddr(callAddr + 2));
 			callAddr = ReadUInt(eAnalyEngine.LinearAddrToVirtualAddr(callAddr));
 			if (callAddr == eAnalyEngine.m_KrnlApp.krnl_MCallDllCmd) {
@@ -313,6 +316,9 @@ bool MainWindow::InitWindow_EStatic(duint codeAddr)
 				break;
 			}
 			unsigned int callAddr = eAnalyEngine.ReadCallAddr(scanStartAddr + 5);
+			if (ReadUShort(eAnalyEngine.LinearAddrToVirtualAddr(callAddr)) != 0x25FF) {
+				continue;
+			}
 			callAddr = ReadUInt(eAnalyEngine.LinearAddrToVirtualAddr(callAddr + 2));
 			callAddr = ReadUInt(eAnalyEngine.LinearAddrToVirtualAddr(callAddr));
 			if (callAddr == eAnalyEngine.m_KrnlApp.krnl_MCallDllCmd) {

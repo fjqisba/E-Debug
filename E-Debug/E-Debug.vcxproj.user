@@ -3,6 +3,12 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <LocalDebuggerCommand>D:\fjqisba\x64Dbg\release\x32\x32dbg.exe</LocalDebuggerCommand>
     <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
+    <RemoteDebuggerServerName>192.168.220.129:4024</RemoteDebuggerServerName>
+    <RemoteDebuggerCommand>C:\Users\admin\Desktop\x64Dbg\release\x32\x32dbg.exe</RemoteDebuggerCommand>
+    <RemoteDebuggerConnection>RemoteWithoutAuthentication</RemoteDebuggerConnection>
+    <RemoteDebuggerWorkingDirectory>C:\Users\admin\Desktop\x64Dbg\release\x32</RemoteDebuggerWorkingDirectory>
+    <DeploymentDirectory>C:\Users\admin\Desktop\x64Dbg\release\x32\plugins</DeploymentDirectory>
+    <AdditionalFiles>C:\Users\fjqisba\source\repos\E-Debug\Debug\E-Debug.dll</AdditionalFiles>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LocalDebuggerCommand>D:\fjqisba\x64Dbg\release\x32\x32dbg.exe</LocalDebuggerCommand>
