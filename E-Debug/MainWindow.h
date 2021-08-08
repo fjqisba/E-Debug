@@ -18,6 +18,7 @@ private slots:
 	void on_ApiMenu(const QPoint&);
 	void on_MsgSelected();
 	void on_WindowSelected(int index);
+	void on_ForcePushWindow(bool checked = false);
 private:
 	Ui::MainWindow ui;
 	EAnalyEngine eAnalyEngine;

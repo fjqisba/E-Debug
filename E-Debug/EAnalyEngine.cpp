@@ -82,7 +82,37 @@ bool EAnalyEngine::InitEAnalyEngine(unsigned int anyAddr, QPlainTextEdit* outMsg
 		outMsg->appendPlainText(QStringLiteral("->ºÏ≤‚µΩ“◊”Ô—‘æ≤Ã¨±‡“Î≥Ã–Ú"));
 		duint dwHeadAddr = Script::Memory::ReadDword(eMagicHead + 0x26);
 		m_bAnalySuccess = Parse_EStatic(dwHeadAddr);
-		bRet = true;
+		return true;
+	}
+
+	//«ø÷∆À—À˜“◊”Ô—‘æ≤Ã¨±‡“ÎÃÿ’˜
+	std::string pattern_eMgData = "0300000000000000??????????";
+	pattern_eMgData.append(UCharToStr(codeBase >> 0x8));
+	pattern_eMgData.append(UCharToStr(codeBase >> 0x10));
+	pattern_eMgData.append(UCharToStr(codeBase >> 0x18));
+	for (unsigned int n = 0; n < mVec_segInfo.size(); ++n) {
+		duint eMagicDataOffset = Script::Pattern::Find(mVec_segInfo[n].m_segData.data(), mVec_segInfo[n].m_segSize, pattern_eMgData.c_str());
+		if (eMagicDataOffset == -1) {
+			continue;
+		}
+		unsigned char* eMagicDataHead = &mVec_segInfo[n].m_segData[eMagicDataOffset];
+		unsigned int dwLibEntry = ReadUInt(eMagicDataHead + 0x24);
+		unsigned char* lpLibEntry = SectionManager::LinearAddrToVirtualAddr(dwLibEntry);
+		if (!lpLibEntry) {
+			continue;
+		}
+		unsigned int dwFirstLibAddr = ReadUInt(lpLibEntry);
+		unsigned char* lpFirstLibAddr = SectionManager::LinearAddrToVirtualAddr(dwFirstLibAddr);
+		if (!lpFirstLibAddr) {
+			continue;
+		}
+		if (ReadUInt(lpFirstLibAddr) == 0x1312D65) {
+			m_AnalysisMode = 1;
+			outMsg->appendPlainText(QStringLiteral("->ºÏ≤‚µΩ“◊”Ô—‘æ≤Ã¨±‡“Î≥Ã–Ú"));
+			m_bAnalySuccess = Parse_EStatic(SectionManager::VirtualAddrToLinearAddr(eMagicDataHead));
+			bRet = true;
+			break;
+		}
 	}
 
 	//To do...

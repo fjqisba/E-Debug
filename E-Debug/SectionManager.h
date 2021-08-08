@@ -22,8 +22,9 @@ public:
 	//虚拟地址转换为线性地址
 	unsigned int VirtualAddrToLinearAddr(unsigned char* pVirtualAddr);
 
-	//模糊搜索
+	//模糊搜索用户代码结束地址
 	unsigned int SeachUserCodeEndAddr();
+
 	//参数为call指令所在的实际地址,返回跳转得到的实际地址
 	unsigned int ReadCallAddr(unsigned int addr);
 public:

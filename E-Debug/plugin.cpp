@@ -313,8 +313,8 @@ PLUG_EXPORT void CBMENUENTRY(CBTYPE cbType, PLUG_CB_MENUENTRY* info)
 		mbp.hInstance = (HMODULE)pluginHandle;
 		mbp.lpszCaption = L"About";
 		mbp.lpszText = L"E-Debug 4.0 Version\n"
-			"Thanks: Xjun\n"
-			"Coded By : fjqisba - 2021.07.13";
+			"Coded By : fjqisba - 2021.06.22\n"
+			"Thanks: Xjun¡¢Pizza¡¢³àÐ¡Í«";
 		mbp.dwStyle = MB_ICONINFORMATION | MB_OK;
 		MessageBoxIndirectW(&mbp);
 		break;

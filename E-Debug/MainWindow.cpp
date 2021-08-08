@@ -42,8 +42,9 @@ MainWindow::MainWindow(unsigned int dwBase, QWidget* parent) : QWidget(parent)
 	connect(ui.list_LibInfo, SIGNAL(currentTextChanged(const QString&)), SLOT(on_LibNameSelected(const QString&)));
 	connect(ui.table_Func,SIGNAL(itemDoubleClicked(QTableWidgetItem*)),SLOT(on_FuncDoubleClicked(QTableWidgetItem*)));
 	connect(ui.outMsg, SIGNAL(selectionChanged()), SLOT(on_MsgSelected()));
+	connect(ui.button_ForcePush, SIGNAL(clicked(bool)), SLOT(on_ForcePushWindow(bool)));
 
-
+	
 	if (!eAnalyEngine.InitEAnalyEngine(dwBase, ui.outMsg)) {
 		QMessageBox::critical(0, QStringLiteral("抱歉"), QStringLiteral("初始化失败"));
 		return;
@@ -72,6 +73,88 @@ bool isValidAddress(QString& src)
 		return false;
 	}
 	return true;
+}
+
+void MainWindow::on_ForcePushWindow(bool checked)
+{
+	if (eAnalyEngine.m_AnalysisMode != 1) {
+		ui.outMsg->appendPlainText(QStringLiteral("暂时不支持其它模式"));
+		return;
+	}
+
+	std::vector<unsigned char> ShellCode = {
+	0xC8,0x00,0x00,0x00,                //enter 0x0,0x0		
+	};
+	for (unsigned int nWindowIndex = 0; nWindowIndex < eAnalyEngine.mVec_GuiInfo.size(); ++nWindowIndex) {
+		std::vector<mid_EventInfo>& vec_Events = eAnalyEngine.mVec_GuiInfo[nWindowIndex].vec_ControlInfo[0].vec_eventInfo;
+		for (unsigned int nEventIndex = 0; nEventIndex < vec_Events.size(); ++nEventIndex) {
+			//窗口创建完毕,窗口首次激活
+			if (vec_Events[nEventIndex].nEventIndex == 0 || vec_Events[nEventIndex].nEventIndex == 8) {
+				Script::Memory::WriteByte(vec_Events[nEventIndex].eventAddr, 0xC3);
+				QString outMsg;
+				outMsg.sprintf("%s:\t%08X", StringUtils::LocalCpToUtf8("修改字节为0xC3").c_str(), vec_Events[nEventIndex].eventAddr);
+				ui.outMsg->appendPlainText(outMsg);
+			}
+		}
+
+		std::vector<unsigned char> windowShell = {
+			0x68,0x00,0x00,0x00,0x00,       //push windowId
+			0xBB,0x00,0x00,0x00,0x00,       //mov ebx,LoadWindow
+			0xFF,0xD3,                      //call ebx
+			0x83,0xC4,0x4,                  //add esp,0x4
+			0x6A,0x00,                      //push 0x0
+			0x6A,0x01,                      //push 0x1
+			0x6A,0xFF,                      //push -0x1
+			0x6A,0x5,                       //push 0x5
+			0x68,0x00,0x00,0x00,0x00,       //push ControlId
+			0x68,0x00,0x00,0x00,0x00,       //push WindowId
+			0xBB,0x00,0x00,0x00,0x00,       //mov ebx,SetWindowProperty
+			0xFF,0xD3,                      //call ebx
+			0x83,0xC4,0x18,                 //add esp,0x18
+			0x6A,0x00,                      //push 0x0
+			0x6A,0x00,                      //push 0x0
+			0x6A,0xFF,                      //push -0x1
+			0x6A,0x6,                       //push 0x6
+			0x68,0x00,0x00,0x00,0x00,       //push ControlId
+			0x68,0x00,0x00,0x00,0x00,       //push WindowId
+			0xBB,0x00,0x00,0x00,0x00,       //mov ebx,SetWindowProperty
+			0xFF,0xD3,                      //call ebx
+			0x83,0xC4,0x18,                 //add esp,0x18
+		};
+		mid_GuiInfo* pGuiInfo = &eAnalyEngine.mVec_GuiInfo[nWindowIndex];
+		WriteUInt(&windowShell[1], pGuiInfo->windowId);
+		WriteUInt(&windowShell[6], eAnalyEngine.m_KrnlApp.krnl_MLoadBeginWin);
+		WriteUInt(&windowShell[24], pGuiInfo->vec_ControlInfo[0].controlId);
+		WriteUInt(&windowShell[29], pGuiInfo->windowId);
+		WriteUInt(&windowShell[34], eAnalyEngine.m_KrnlApp.krnl_MWriteProperty);
+		WriteUInt(&windowShell[52], pGuiInfo->vec_ControlInfo[0].controlId);
+		WriteUInt(&windowShell[57], pGuiInfo->windowId);
+		WriteUInt(&windowShell[62], eAnalyEngine.m_KrnlApp.krnl_MWriteProperty);
+		ShellCode.insert(ShellCode.end(), windowShell.begin(), windowShell.end());
+	}
+
+	std::vector<unsigned char> endLoop = {
+		0xBB,0x00,0x00,0x00,0x00,       //mov ebx,MessageLoop
+		0xFF,0xD3,                      //call ebx
+		0xC9,                           //leave
+		0xC3                            //ret
+	};
+	WriteUInt(&endLoop[1], eAnalyEngine.m_KrnlApp.krnl_MMessageLoop);
+	ShellCode.insert(ShellCode.end(), endLoop.begin(), endLoop.end());
+
+	duint shellCodeBuf = Script::Memory::RemoteAlloc(0, 0x1000);
+	QString outMsg;
+	outMsg.sprintf("%s%08X", StringUtils::LocalCpToUtf8("申请内存成功:\t").c_str(), shellCodeBuf);
+	ui.outMsg->appendPlainText(outMsg);
+	duint recvLen = 0;
+	Script::Memory::Write(shellCodeBuf, ShellCode.data(), ShellCode.size(), &recvLen);
+
+	HANDLE hThread = CreateRemoteThread(DbgGetProcessHandle(), 0, 0, (LPTHREAD_START_ROUTINE)shellCodeBuf, 0, 0, 0);
+	if (hThread == 0) {
+		return;
+	}
+	CloseHandle(hThread);
+	return;
 }
 
 void MainWindow::on_WindowSelected(int index)

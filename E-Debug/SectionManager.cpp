@@ -82,6 +82,7 @@ unsigned int SectionManager::VirtualAddrToLinearAddr(unsigned char* pVirtualAddr
 	return -1;
 }
 
+
 unsigned int SectionManager::SeachUserCodeEndAddr()
 {
 	if (!mVec_segInfo.size()) {
