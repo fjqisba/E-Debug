@@ -576,7 +576,7 @@ label_end:
 bool TrieTree::SlowMatch(unsigned char* FuncSrc, std::string& FuncTxt)
 {
 	unsigned char* pSrc = FuncSrc;  //初始化函数代码指针
-	if (FuncTxt == "")
+	if (FuncTxt == "" || !FuncSrc)
 	{
 		return false;
 	}
