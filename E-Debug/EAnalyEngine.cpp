@@ -81,8 +81,9 @@ bool EAnalyEngine::InitEAnalyEngine(unsigned int anyAddr, QPlainTextEdit* outMsg
 		m_AnalysisMode = 1;
 		outMsg->appendPlainText(QStringLiteral("->¼ì²âµ½Ò×ÓïÑÔ¾²Ì¬±àÒë³ÌĞò"));
 		duint dwHeadAddr = Script::Memory::ReadDword(eMagicHead + 0x26);
-		m_bAnalySuccess = Parse_EStatic(dwHeadAddr);
-		return true;
+		if (m_bAnalySuccess = Parse_EStatic(dwHeadAddr)) {
+			return true;
+		}
 	}
 
 	//Ç¿ÖÆËÑË÷Ò×ÓïÑÔ¾²Ì¬±àÒëÌØÕ÷
